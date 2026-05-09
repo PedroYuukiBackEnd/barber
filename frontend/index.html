@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>@pyuuki_</title>
+  
+  <!-- Fonts: Outfit -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Icons: Phosphor -->
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+  
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <!-- Área de Login -->
+  <section id="auth-section" class="auth-wrapper">
+    <!-- Card de Login -->
+    <div class="auth-card glass-panel" id="login-card">
+      <div class="auth-header">
+        <i class="ph ph-scissors auth-icon"></i>
+        <h2>Entrar no Sistema</h2>
+        <p>Acesse sua barbearia</p>
+      </div>
+      <form id="login-form">
+        <div class="input-group" style="margin-bottom: 16px;">
+          <label for="login-email">E-mail</label>
+          <div class="input-with-icon">
+            <i class="ph ph-envelope"></i>
+            <input id="login-email" type="email" required placeholder="seu@email.com" />
+          </div>
+        </div>
+        <div class="input-group" style="margin-bottom: 24px;">
+          <label for="login-password">Senha de Acesso</label>
+          <div class="input-with-icon">
+            <i class="ph ph-lock-key"></i>
+            <input id="login-password" type="password" required placeholder="Digite sua senha" class="has-toggle" />
+            <i class="ph ph-eye toggle-password" data-target="login-password"></i>
+          </div>
+        </div>
+        <button class="button-primary w-full" type="submit">Entrar <i class="ph ph-sign-in"></i></button>
+        <p class="message" id="login-message"></p>
+        
+        <div style="text-align: center; margin-top: 24px;">
+          <a href="#" id="show-register" style="color: var(--primary-color); text-decoration: none; font-size: 0.95rem;">Não tem conta? <strong>Cadastre-se</strong></a>
+        </div>
+      </form>
+    </div>
+
+    <!-- Card de Registro -->
+    <div class="auth-card glass-panel hidden" id="register-card">
+      <div class="auth-header">
+        <i class="ph ph-storefront auth-icon"></i>
+        <h2>Nova Barbearia</h2>
+        <p>Crie sua conta no SaaS</p>
+      </div>
+      <form id="register-form">
+        <div class="input-group" style="margin-bottom: 16px;">
+          <label for="register-name">Seu Nome</label>
+          <div class="input-with-icon">
+            <i class="ph ph-user"></i>
+            <input id="register-name" type="text" required placeholder="Ex: João Silva" />
+          </div>
+        </div>
+        <div class="input-group" style="margin-bottom: 16px;">
+          <label for="register-tenant">Nome da Barbearia</label>
+          <div class="input-with-icon">
+            <i class="ph ph-scissors"></i>
+            <input id="register-tenant" type="text" required placeholder="Ex: Barbearia do João" />
+          </div>
+        </div>
+        <div class="input-group" style="margin-bottom: 16px;">
+          <label for="register-email">E-mail</label>
+          <div class="input-with-icon">
+            <i class="ph ph-envelope"></i>
+            <input id="register-email" type="email" required placeholder="seu@email.com" />
+          </div>
+        </div>
+        <div class="input-group" style="margin-bottom: 24px;">
+          <label for="register-password">Senha</label>
+          <div class="input-with-icon">
+            <i class="ph ph-lock-key"></i>
+            <input id="register-password" type="password" required placeholder="Crie uma senha forte" class="has-toggle" />
+            <i class="ph ph-eye toggle-password" data-target="register-password"></i>
+          </div>
+        </div>
+        <button class="button-primary w-full" type="submit">Criar Conta <i class="ph ph-user-plus"></i></button>
+        <p class="message" id="register-message"></p>
+        
+        <div style="text-align: center; margin-top: 24px;">
+          <a href="#" id="show-login" style="color: var(--primary-color); text-decoration: none; font-size: 0.95rem;">Já tem conta? <strong>Faça Login</strong></a>
+        </div>
+      </form>
+    </div>
+  </section>
+
+  <!-- Área do Aplicativo (Dashboard) -->
+  <section id="app-section" class="app-layout hidden">
+    
+    <!-- Menu Lateral (Sidebar) -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <div class="logo-area">
+          <div class="logo-icon-wrapper">
+            <i class="ph ph-scissors logo-icon"></i>
+          </div>
+          <div>
+            <h1 class="logo-text" id="tenant-name">Carregando...</h1>
+            <span class="tenant-badge">@pyuuki_</span>
+          </div>
+        </div>
+        <button class="icon-button close-sidebar-btn" id="close-sidebar">
+          <i class="ph ph-x"></i>
+        </button>
+      </div>
+      
+      <nav class="sidebar-nav">
+        <button class="nav-button active" data-section="clients-panel">
+          <i class="ph ph-users"></i> Clientes
+        </button>
+        <button class="nav-button" data-section="services-panel">
+          <i class="ph ph-briefcase"></i> Serviços
+        </button>
+        <button class="nav-button" data-section="appointments-panel">
+          <i class="ph ph-calendar-check"></i> Agendamentos
+        </button>
+      </nav>
+      
+      <div class="sidebar-footer">
+        <button class="button-logout" id="logout-button">
+          <i class="ph ph-sign-out"></i> Sair do sistema
+        </button>
+      </div>
+    </aside>
+
+    <!-- Overlay Mobile -->
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+    <!-- Conteúdo Principal -->
+    <main class="main-content">
+      
+      <!-- Topbar (Mobile) -->
+      <header class="topbar">
+        <button class="icon-button menu-toggle" id="menu-toggle">
+          <i class="ph ph-list"></i>
+        </button>
+        <div class="topbar-logo">
+          <i class="ph ph-scissors"></i>
+          <h2 class="topbar-title">Dashboard</h2>
+        </div>
+        <div style="width: 40px;"></div> <!-- Spacer para centralizar -->
+      </header>
+
+      <div class="content-wrapper">
+        <!-- Painel de Clientes -->
+        <section id="clients-panel" class="panel active fade-in">
+          <div class="panel-header">
+            <div class="panel-title">
+              <h2><i class="ph ph-users"></i> Gestão de Clientes</h2>
+              <p>Gerencie seus clientes e mantenha o contato.</p>
+            </div>
+            <button class="button-primary" id="new-client">
+              <i class="ph ph-plus-circle"></i> Novo Cliente
+            </button>
+          </div>
+
+          <form id="client-form" class="form-card glass-panel hidden">
+            <h3 class="form-title">Dados do Cliente</h3>
+            <input type="hidden" id="client-id" />
+            <div class="form-grid">
+              <div class="input-group">
+                <label>Nome Completo</label>
+                <input id="client-name" type="text" required placeholder="Ex: João da Silva" />
+              </div>
+              <div class="input-group">
+                <label>Telefone</label>
+                <input id="client-phone" type="tel" placeholder="(00) 00000-0000" />
+              </div>
+              <div class="input-group full-width">
+                <label>Observações</label>
+                <textarea id="client-notes" placeholder="Preferências de corte, restrições, etc."></textarea>
+              </div>
+            </div>
+            <div class="form-actions">
+              <button class="button-secondary" type="button" id="cancel-client">Cancelar</button>
+              <button class="button-primary" type="submit">Salvar Cliente</button>
+            </div>
+          </form>
+
+          <div class="table-card glass-panel">
+            <div class="table-wrapper">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Cliente</th>
+                    <th>Telefone</th>
+                    <th>Observações</th>
+                    <th>Ações</th>
+                  </tr>
+                </thead>
+                <tbody id="clients-table"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- Painel de Serviços -->
+        <section id="services-panel" class="panel hidden fade-in">
+          <div class="panel-header">
+            <div class="panel-title">
+              <h2><i class="ph ph-briefcase"></i> Gestão de Serviços</h2>
+              <p>Cadastre os serviços e seus respectivos valores.</p>
+            </div>
+            <button class="button-primary" id="new-service">
+              <i class="ph ph-plus-circle"></i> Novo Serviço
+            </button>
+          </div>
+
+          <form id="service-form" class="form-card glass-panel hidden">
+            <h3 class="form-title">Dados do Serviço</h3>
+            <input type="hidden" id="service-id" />
+            <div class="form-grid">
+              <div class="input-group">
+                <label>Nome do Serviço</label>
+                <input id="service-name" type="text" required placeholder="Ex: Corte Degradê" />
+              </div>
+              <div class="input-group">
+                <label>Preço (R$)</label>
+                <input id="service-price" type="number" step="0.01" min="0" required placeholder="0.00" />
+              </div>
+              <div class="input-group full-width">
+                <label>Descrição (Opcional)</label>
+                <textarea id="service-description" placeholder="Detalhes adicionais sobre o serviço"></textarea>
+              </div>
+            </div>
+            <div class="form-actions">
+              <button class="button-secondary" type="button" id="cancel-service">Cancelar</button>
+              <button class="button-primary" type="submit">Salvar Serviço</button>
+            </div>
+          </form>
+
+          <div class="table-card glass-panel">
+            <div class="table-wrapper">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Serviço</th>
+                    <th>Preço</th>
+                    <th>Descrição</th>
+                    <th>Ações</th>
+                  </tr>
+                </thead>
+                <tbody id="services-table"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- Painel de Agendamentos -->
+        <section id="appointments-panel" class="panel hidden fade-in">
+          <div class="panel-header">
+            <div class="panel-title">
+              <h2><i class="ph ph-calendar-check"></i> Agendamentos</h2>
+              <p>Controle a agenda e faturamento.</p>
+            </div>
+            <button class="button-primary" id="new-appointment">
+              <i class="ph ph-plus-circle"></i> Novo Agendamento
+            </button>
+          </div>
+
+          <form id="appointment-form" class="form-card glass-panel hidden">
+             <h3 class="form-title">Detalhes do Agendamento</h3>
+            <input type="hidden" id="appointment-id" />
+            <div class="form-grid">
+              <div class="input-group">
+                <label>Cliente</label>
+                <select id="appointment-client" required>
+                  <!-- Opções preenchidas pelo JS -->
+                </select>
+              </div>
+              <div class="input-group">
+                <label>Data e Hora</label>
+                <input id="appointment-date" type="datetime-local" required />
+              </div>
+              <div class="input-group full-width">
+                <label>Serviços Realizados</label>
+                <div id="appointment-services" class="checkbox-grid"></div>
+              </div>
+              <div class="input-group full-width">
+                <label>Notas Adicionais</label>
+                <textarea id="appointment-notes" placeholder="Alguma observação para este agendamento?"></textarea>
+              </div>
+            </div>
+            
+            <div class="form-summary">
+              <span class="summary-label">Valor Total do Agendamento</span>
+              <strong class="summary-value" id="appointment-total">R$ 0,00</strong>
+            </div>
+
+            <div class="form-actions">
+              <button class="button-secondary" type="button" id="cancel-appointment">Cancelar</button>
+              <button class="button-primary" type="submit">Salvar Agendamento</button>
+            </div>
+          </form>
+
+          <div class="table-card glass-panel">
+            <div class="table-wrapper">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Cliente</th>
+                    <th>Data</th>
+                    <th>Serviços</th>
+                    <th>Valor</th>
+                    <th>Ações</th>
+                  </tr>
+                </thead>
+                <tbody id="appointments-table"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+      </div>
+    </main>
+  </section>
+
+  <!-- Theme Toggle -->
+  <button id="theme-toggle" class="theme-toggle" title="Alternar Modo Escuro/Claro">
+    <i class="ph ph-sun"></i>
+  </button>
+
+  <script src="script.js"></script>
+</body>
+</html>
