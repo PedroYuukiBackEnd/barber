@@ -18,6 +18,10 @@
 <body>
   <!-- Área de Login -->
   <section id="auth-section" class="auth-wrapper">
+    <!-- Botão Admin Discreto -->
+    <button class="admin-access-btn" id="admin-access-btn" title="Acesso Admin" style="position: absolute; top: 20px; right: 20px; background: rgba(255,255,255,0.1); border: none; border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; color: var(--primary-color); cursor: pointer; opacity: 0.7; transition: opacity 0.3s;">
+      <i class="ph ph-shield"></i>
+    </button>
     <!-- Card de Login -->
     <div class="auth-card glass-panel" id="login-card">
       <div class="auth-header">
@@ -27,10 +31,10 @@
       </div>
       <form id="login-form">
         <div class="input-group" style="margin-bottom: 16px;">
-          <label for="login-email">E-mail</label>
+          <label for="login-email">Acesso</label>
           <div class="input-with-icon">
-            <i class="ph ph-envelope"></i>
-            <input id="login-email" type="email" required placeholder="seu@email.com" />
+            <i class="ph ph-key"></i>
+            <input id="login-email" type="text" required placeholder="Digite seu acesso" />
           </div>
         </div>
         <div class="input-group" style="margin-bottom: 24px;">
@@ -43,56 +47,6 @@
         </div>
         <button class="button-primary w-full" type="submit">Entrar <i class="ph ph-sign-in"></i></button>
         <p class="message" id="login-message"></p>
-        
-        <div style="text-align: center; margin-top: 24px;">
-          <a href="#" id="show-register" style="color: var(--primary-color); text-decoration: none; font-size: 0.95rem;">Não tem conta? <strong>Cadastre-se</strong></a>
-        </div>
-      </form>
-    </div>
-
-    <!-- Card de Registro -->
-    <div class="auth-card glass-panel hidden" id="register-card">
-      <div class="auth-header">
-        <i class="ph ph-storefront auth-icon"></i>
-        <h2>Nova Barbearia</h2>
-        <p>Crie sua conta no SaaS</p>
-      </div>
-      <form id="register-form">
-        <div class="input-group" style="margin-bottom: 16px;">
-          <label for="register-name">Seu Nome</label>
-          <div class="input-with-icon">
-            <i class="ph ph-user"></i>
-            <input id="register-name" type="text" required placeholder="Ex: João Silva" />
-          </div>
-        </div>
-        <div class="input-group" style="margin-bottom: 16px;">
-          <label for="register-tenant">Nome da Barbearia</label>
-          <div class="input-with-icon">
-            <i class="ph ph-scissors"></i>
-            <input id="register-tenant" type="text" required placeholder="Ex: Barbearia do João" />
-          </div>
-        </div>
-        <div class="input-group" style="margin-bottom: 16px;">
-          <label for="register-email">E-mail</label>
-          <div class="input-with-icon">
-            <i class="ph ph-envelope"></i>
-            <input id="register-email" type="email" required placeholder="seu@email.com" />
-          </div>
-        </div>
-        <div class="input-group" style="margin-bottom: 24px;">
-          <label for="register-password">Senha</label>
-          <div class="input-with-icon">
-            <i class="ph ph-lock-key"></i>
-            <input id="register-password" type="password" required placeholder="Crie uma senha forte" class="has-toggle" />
-            <i class="ph ph-eye toggle-password" data-target="register-password"></i>
-          </div>
-        </div>
-        <button class="button-primary w-full" type="submit">Criar Conta <i class="ph ph-user-plus"></i></button>
-        <p class="message" id="register-message"></p>
-        
-        <div style="text-align: center; margin-top: 24px;">
-          <a href="#" id="show-login" style="color: var(--primary-color); text-decoration: none; font-size: 0.95rem;">Já tem conta? <strong>Faça Login</strong></a>
-        </div>
       </form>
     </div>
   </section>
@@ -127,7 +81,14 @@
         <button class="nav-button" data-section="appointments-panel">
           <i class="ph ph-calendar-check"></i> Agendamentos
         </button>
+        <button class="nav-button" data-section="bugs-panel">
+          <i class="ph ph-bug"></i> Relatar Problema
+        </button>
+        <button class="nav-button" data-section="settings-panel">
+          <i class="ph ph-sliders-horizontal"></i> Configurações
+        </button>
       </nav>
+
       
       <div class="sidebar-footer">
         <button class="button-logout" id="logout-button">
@@ -289,6 +250,22 @@
                 <label>Serviços Realizados</label>
                 <div id="appointment-services" class="checkbox-grid"></div>
               </div>
+              <div class="input-group">
+                <label>Tipo de Pagamento</label>
+                <select id="appointment-payment-type">
+                  <option value="dinheiro">Dinheiro</option>
+                  <option value="pix">PIX</option>
+                  <option value="debito">Débito</option>
+                  <option value="credito">Crédito</option>
+                </select>
+              </div>
+              <div class="input-group">
+                <label>Pagamento</label>
+                <select id="appointment-payment-status">
+                  <option value="a pagar">A pagar</option>
+                  <option value="ja pago">Já pago</option>
+                </select>
+              </div>
               <div class="input-group full-width">
                 <label>Notas Adicionais</label>
                 <textarea id="appointment-notes" placeholder="Alguma observação para este agendamento?"></textarea>
@@ -307,6 +284,37 @@
           </form>
 
           <div class="table-card glass-panel">
+            <div class="appointment-filters">
+              <div class="input-group">
+                <label>Data</label>
+                <input id="appointment-filter-date" type="date" />
+              </div>
+              <div class="input-group">
+                <label>Valor mínimo</label>
+                <input id="appointment-filter-min-value" type="number" step="0.01" min="0" placeholder="0.00" />
+              </div>
+              <div class="input-group">
+                <label>Valor máximo</label>
+                <input id="appointment-filter-max-value" type="number" step="0.01" min="0" placeholder="0.00" />
+              </div>
+              <div class="input-group">
+                <label>Serviço</label>
+                <select id="appointment-filter-service">
+                  <option value="">Todos</option>
+                </select>
+              </div>
+              <div class="input-group">
+                <label>Pagamento</label>
+                <select id="appointment-filter-payment-status">
+                  <option value="">Todos</option>
+                  <option value="ja pago">Já pago</option>
+                  <option value="a pagar">A pagar</option>
+                </select>
+              </div>
+              <button class="button-secondary" type="button" id="clear-appointment-filters">
+                <i class="ph ph-x-circle"></i> Limpar
+              </button>
+            </div>
             <div class="table-wrapper">
               <table>
                 <thead>
@@ -315,6 +323,7 @@
                     <th>Data</th>
                     <th>Serviços</th>
                     <th>Valor</th>
+                    <th>Pagamento</th>
                     <th>Ações</th>
                   </tr>
                 </thead>
@@ -324,9 +333,79 @@
           </div>
         </section>
 
+        <!-- Painel de Relato de Bugs -->
+        <section id="bugs-panel" class="panel hidden fade-in">
+          <div class="panel-header">
+            <div class="panel-title">
+              <h2><i class="ph ph-bug"></i> Relatar Problema</h2>
+              <p>Encontrou algum problema no sistema? Relate aqui para nossa equipe.</p>
+            </div>
+          </div>
+
+          <form id="bug-form" class="form-card glass-panel">
+            <h3 class="form-title">Descreva o problema ocorrido</h3>
+            <div class="form-grid">
+              <div class="input-group">
+                <label>Nome do Cliente</label>
+                <input id="bug-client-name" type="text" required placeholder="Seu nome" />
+              </div>
+              <div class="input-group">
+                <label>Nome da Barbearia</label>
+                <input id="bug-barbershop-name" type="text" required placeholder="Nome da barbearia" />
+              </div>
+              <div class="input-group full-width">
+                <label>Descreva o problema ocorrido</label>
+                <textarea id="bug-description" required placeholder="Detalhe o bug ou problema encontrado..."></textarea>
+              </div>
+            </div>
+            <div class="form-actions">
+              <button class="button-primary" type="submit">Enviar Relato <i class="ph ph-paper-plane-right"></i></button>
+            </div>
+          </form>
+        </section>
+
+        <!-- Painel de Configurações -->
+        <section id="settings-panel" class="panel hidden fade-in">
+          <div class="panel-header">
+            <div class="panel-title">
+              <h2><i class="ph ph-sliders-horizontal"></i> Configurações</h2>
+              <p>Personalize sua barbearia e o visual do sistema.</p>
+            </div>
+          </div>
+
+          <form id="settings-form" class="form-card glass-panel">
+            <h3 class="form-title">Dados da Barbearia</h3>
+            <div class="form-grid">
+              <div class="input-group full-width">
+                <label for="tenant-name-input">Nome da Barbearia</label>
+                <input id="tenant-name-input" type="text" required placeholder="Ex: Barbearia do João" />
+              </div>
+            </div>
+
+            <h3 class="form-title" style="margin-top: 24px;">Cores do HUD</h3>
+            <div class="form-grid">
+              <div class="input-group">
+                <label for="primary-color-input">Cor principal</label>
+                <input id="primary-color-input" type="color" value="#d4d4d8" />
+              </div>
+              <div class="input-group">
+                <label for="border-color-input">Cor da borda</label>
+                <input id="border-color-input" type="color" value="#3f3f46" />
+              </div>
+            </div>
+
+            <div class="form-actions">
+              <button class="button-primary" type="submit">Salvar Configurações <i class="ph ph-check-circle"></i></button>
+            </div>
+
+            <p class="message" id="settings-message"></p>
+          </form>
+        </section>
+
       </div>
     </main>
   </section>
+
 
   <!-- Theme Toggle -->
   <button id="theme-toggle" class="theme-toggle" title="Alternar Modo Escuro/Claro">

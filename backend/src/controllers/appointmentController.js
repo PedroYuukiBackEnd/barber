@@ -14,7 +14,7 @@ async function listAppointmentsHandler(req, res, next) {
 
 async function createAppointmentHandler(req, res, next) {
   try {
-    const { client_id, appointment_date, service_ids, notes } = req.body;
+    const { client_id, appointment_date, service_ids, payment_type, payment_status, notes } = req.body;
     if (!client_id || !appointment_date || !Array.isArray(service_ids) || service_ids.length === 0) {
       return res.status(400).json({ message: 'Cliente, data e pelo menos um serviço são obrigatórios.' });
     }
@@ -30,7 +30,7 @@ async function createAppointmentHandler(req, res, next) {
     }
 
     const total = services.reduce((sum, service) => sum + Number(service.price), 0);
-    const appointment = await createAppointment(req.user.tenant_id, client_id, appointment_date, total, notes || '', services);
+    const appointment = await createAppointment(req.user.tenant_id, client_id, appointment_date, total, payment_type || 'dinheiro', payment_status || 'a pagar', notes || '', services);
     res.status(201).json({ appointment });
   } catch (error) {
     next(error);
@@ -40,7 +40,7 @@ async function createAppointmentHandler(req, res, next) {
 async function updateAppointmentHandler(req, res, next) {
   try {
     const appointmentId = Number(req.params.id);
-    const { client_id, appointment_date, service_ids, notes } = req.body;
+    const { client_id, appointment_date, service_ids, payment_type, payment_status, notes } = req.body;
     if (!client_id || !appointment_date || !Array.isArray(service_ids) || service_ids.length === 0) {
       return res.status(400).json({ message: 'Cliente, data e pelo menos um serviço são obrigatórios.' });
     }
@@ -61,7 +61,7 @@ async function updateAppointmentHandler(req, res, next) {
     }
 
     const total = services.reduce((sum, service) => sum + Number(service.price), 0);
-    const appointment = await updateAppointment(appointmentId, req.user.tenant_id, client_id, appointment_date, total, notes || '', services);
+    const appointment = await updateAppointment(appointmentId, req.user.tenant_id, client_id, appointment_date, total, payment_type || 'dinheiro', payment_status || 'a pagar', notes || '', services);
     res.json({ appointment });
   } catch (error) {
     next(error);

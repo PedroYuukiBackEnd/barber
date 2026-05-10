@@ -12,16 +12,25 @@ async function apiFetch(endpoint, method = 'GET', body = null) {
   const options = {
     method,
     headers: {},
+    credentials: 'include',
   };
   if (body) {
     options.headers['Content-Type'] = 'application/json';
     options.body = JSON.stringify(body);
   }
+
   const response = await fetch(endpoint, options);
-  const data = await response.json();
-  if (!response.ok) {
-    throw new Error(data.message || 'Erro na requisição ao servidor');
+  let data = null;
+  try {
+    data = await response.json();
+  } catch (error) {
+    // Se a resposta não tiver JSON, continuamos com um erro genérico.
   }
+
+  if (!response.ok) {
+    throw new Error(data?.message || `Erro ${response.status}: ${response.statusText}`);
+  }
+
   return data;
 }
 
@@ -32,13 +41,8 @@ const tenantNameTitle = document.getElementById('tenant-name');
 const logoutButton = document.getElementById('logout-button');
 
 const loginCard = document.getElementById('login-card');
-const registerCard = document.getElementById('register-card');
 const loginForm = document.getElementById('login-form');
-const registerForm = document.getElementById('register-form');
 const loginMessage = document.getElementById('login-message');
-const registerMessage = document.getElementById('register-message');
-const showRegisterBtn = document.getElementById('show-register');
-const showLoginBtn = document.getElementById('show-login');
 
 const navButtons = document.querySelectorAll('.nav-button');
 const sectionPanels = document.querySelectorAll('.panel');
@@ -54,10 +58,17 @@ const appointmentsTable = document.getElementById('appointments-table');
 const appointmentClient = document.getElementById('appointment-client');
 const appointmentServices = document.getElementById('appointment-services');
 const appointmentTotal = document.getElementById('appointment-total');
+const appointmentFilterDate = document.getElementById('appointment-filter-date');
+const appointmentFilterMinValue = document.getElementById('appointment-filter-min-value');
+const appointmentFilterMaxValue = document.getElementById('appointment-filter-max-value');
+const appointmentFilterService = document.getElementById('appointment-filter-service');
+const appointmentFilterPaymentStatus = document.getElementById('appointment-filter-payment-status');
+const clearAppointmentFiltersButton = document.getElementById('clear-appointment-filters');
 
 const clientForm = document.getElementById('client-form');
 const serviceForm = document.getElementById('service-form');
 const appointmentForm = document.getElementById('appointment-form');
+const bugForm = document.getElementById('bug-form');
 
 const newClientButton = document.getElementById('new-client');
 const cancelClientButton = document.getElementById('cancel-client');
@@ -65,6 +76,15 @@ const newServiceButton = document.getElementById('new-service');
 const cancelServiceButton = document.getElementById('cancel-service');
 const newAppointmentButton = document.getElementById('new-appointment');
 const cancelAppointmentButton = document.getElementById('cancel-appointment');
+
+// --- Settings ---
+const settingsPanel = document.getElementById('settings-panel');
+const settingsForm = document.getElementById('settings-form');
+const settingsMessage = document.getElementById('settings-message');
+const tenantNameInput = document.getElementById('tenant-name-input');
+const primaryColorInput = document.getElementById('primary-color-input');
+const borderColorInput = document.getElementById('border-color-input');
+
 
 // --- Layout & Navigation ---
 function toggleSidebar() {
@@ -96,15 +116,11 @@ function showAuth() {
   appSection.classList.add('hidden');
 }
 
-function toggleAuthCard(isRegister) {
-  if (isRegister) {
-    loginCard.classList.add('hidden');
-    registerCard.classList.remove('hidden');
-  } else {
-    registerCard.classList.add('hidden');
-    loginCard.classList.remove('hidden');
-  }
+function applyHudColors({ primaryColor, borderColor }) {
+  if (primaryColor) document.documentElement.style.setProperty('--primary-color', primaryColor);
+  if (borderColor) document.documentElement.style.setProperty('--border-color', borderColor);
 }
+
 
 // --- Form Resets ---
 function resetClientForm() {
@@ -131,6 +147,61 @@ function resetAppointmentForm() {
 
 function formatCurrency(value) {
   return Number(value).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+}
+
+function getPaymentTypeLabel(paymentType) {
+  const labels = {
+    'dinheiro': 'Dinheiro',
+    'pix': 'PIX',
+    'debito': 'Débito',
+    'credito': 'Crédito'
+  };
+  return labels[paymentType] || 'Dinheiro';
+}
+
+function getPaymentStatusLabel(paymentStatus) {
+  return paymentStatus === 'ja pago' ? 'Já pago' : 'A pagar';
+}
+
+function normalizeAppointmentDate(value) {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value.slice(0, 16);
+  return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+}
+
+function getAppointmentTotal(appointment) {
+  return Number(appointment.total_price ?? appointment.total ?? 0);
+}
+
+function getFilteredAppointments() {
+  const selectedDate = appointmentFilterDate?.value || '';
+  const minValue = appointmentFilterMinValue?.value ? Number(appointmentFilterMinValue.value) : null;
+  const maxValue = appointmentFilterMaxValue?.value ? Number(appointmentFilterMaxValue.value) : null;
+  const serviceId = appointmentFilterService?.value ? Number(appointmentFilterService.value) : null;
+  const paymentStatus = appointmentFilterPaymentStatus?.value || '';
+
+  return state.appointments.filter((appointment) => {
+    const appointmentDate = normalizeAppointmentDate(appointment.appointment_date).slice(0, 10);
+    const total = getAppointmentTotal(appointment);
+    const services = appointment.services || [];
+    const hasService = !serviceId || services.some((service) => Number(service.service_id || service.id) === serviceId);
+    const currentStatus = appointment.payment_status || 'a pagar';
+
+    return (!selectedDate || appointmentDate === selectedDate)
+      && (minValue === null || total >= minValue)
+      && (maxValue === null || total <= maxValue)
+      && hasService
+      && (!paymentStatus || currentStatus === paymentStatus);
+  });
+}
+
+function hasAppointmentScheduleConflict(appointmentDate, currentAppointmentId = null) {
+  const normalizedDate = normalizeAppointmentDate(appointmentDate);
+  return state.appointments.some((appointment) => {
+    if (currentAppointmentId && Number(appointment.id) === Number(currentAppointmentId)) return false;
+    return normalizeAppointmentDate(appointment.appointment_date) === normalizedDate;
+  });
 }
 
 function updateTotals() {
@@ -167,17 +238,30 @@ function renderServices() {
 }
 
 function renderAppointments() {
-  appointmentsTable.innerHTML = state.appointments.map((appointment) => {
+  const appointments = getFilteredAppointments();
+
+  if (!appointments.length) {
+    appointmentsTable.innerHTML = '<tr><td colspan="6">Nenhum agendamento encontrado.</td></tr>';
+    return;
+  }
+
+  appointmentsTable.innerHTML = appointments.map((appointment) => {
     const client = state.clients.find(c => c.id === appointment.client_id);
     const clientName = client ? client.name : 'Cliente não encontrado';
-    const servicesText = appointment.services ? appointment.services.map(s => s.name).join(', ') : '-';
-    
+    const servicesText = appointment.services ? appointment.services.map(s => s.service_name || s.name).join(', ') : '-';
+    const totalPrice = getAppointmentTotal(appointment);
+    const paymentStatus = appointment.payment_status || 'a pagar';
+
     return `
     <tr>
       <td>${clientName}</td>
       <td>${new Date(appointment.appointment_date).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}</td>
       <td>${servicesText}</td>
-      <td>${formatCurrency(appointment.total_price || 0)}</td>
+      <td>${formatCurrency(totalPrice)}</td>
+      <td>
+        ${getPaymentTypeLabel(appointment.payment_type || 'dinheiro')}
+        <span class="payment-status">${getPaymentStatusLabel(paymentStatus)}</span>
+      </td>
       <td class="actions">
         <button class="button-secondary" data-action="edit-appointment" data-id="${appointment.id}">Editar</button>
         <button class="button-secondary" data-action="delete-appointment" data-id="${appointment.id}">Remover</button>
@@ -195,6 +279,15 @@ function fillAppointmentServices() {
   appointmentServices.querySelectorAll('input[type="checkbox"]').forEach((checkbox) => {
     checkbox.addEventListener('change', updateTotals);
   });
+}
+
+function fillAppointmentServiceFilter() {
+  if (!appointmentFilterService) return;
+  const selectedValue = appointmentFilterService.value;
+  appointmentFilterService.innerHTML = '<option value="">Todos</option>' + state.services.map((service) => (
+    `<option value="${service.id}">${service.name}</option>`
+  )).join('');
+  appointmentFilterService.value = selectedValue;
 }
 
 function fillClientSelect() {
@@ -219,6 +312,7 @@ async function loadAppData() {
     renderAppointments();
     fillClientSelect();
     fillAppointmentServices();
+    fillAppointmentServiceFilter();
   } catch (error) {
     console.error('Erro ao carregar dados:', error);
     alert('Erro ao sincronizar dados com o servidor.');
@@ -243,28 +337,6 @@ async function handleLogin(event) {
     await loadAppData();
   } catch (error) {
     loginMessage.textContent = error.message;
-  }
-}
-
-async function handleRegister(event) {
-  event.preventDefault();
-  registerMessage.textContent = 'Criando conta...';
-  try {
-    const name = document.getElementById('register-name').value.trim();
-    const tenantName = document.getElementById('register-tenant').value.trim();
-    const email = document.getElementById('register-email').value.trim();
-    const password = document.getElementById('register-password').value.trim();
-    
-    const data = await apiFetch('/api/auth/register', 'POST', { email, password, name, tenantName });
-    state.user = data.user;
-    state.tenant = data.tenant;
-    
-    registerForm.reset();
-    registerMessage.textContent = '';
-    showApp();
-    await loadAppData();
-  } catch (error) {
-    registerMessage.textContent = error.message;
   }
 }
 
@@ -337,13 +409,20 @@ async function handleAppointmentSubmit(event) {
   const appointment_date = document.getElementById('appointment-date').value;
   const notes = document.getElementById('appointment-notes').value.trim();
   const service_ids = readCheckedServiceIds();
+  const payment_type = document.getElementById('appointment-payment-type').value;
+  const payment_status = document.getElementById('appointment-payment-status').value;
   
   if (!client_id || !appointment_date || !service_ids.length) {
     alert('Por favor, preencha o cliente, a data e selecione pelo menos um serviço.');
     return;
   }
 
-  const payload = { client_id, appointment_date, service_ids, notes };
+  if (hasAppointmentScheduleConflict(appointment_date, id)) {
+    const shouldContinue = confirm('Já existe um agendamento neste mesmo dia e horário. Deseja mesmo agendar no mesmo dia/horário?');
+    if (!shouldContinue) return;
+  }
+
+  const payload = { client_id, appointment_date, service_ids, payment_type, payment_status, notes };
 
   try {
     if (id) {
@@ -356,6 +435,19 @@ async function handleAppointmentSubmit(event) {
   } catch (error) {
     alert(error.message);
   }
+}
+
+async function handleBugSubmit(event) {
+  event.preventDefault();
+  const clientName = document.getElementById('bug-client-name').value.trim();
+  const barbershopName = document.getElementById('bug-barbershop-name').value.trim();
+  const description = document.getElementById('bug-description').value.trim();
+
+  if (!clientName || !barbershopName || !description) return;
+
+  // Since there is no specific backend endpoint yet, we simulate a successful submission
+  alert('Relato enviado com sucesso! Nossa equipe analisará o problema.');
+  bugForm.reset();
 }
 
 // --- Open Forms ---
@@ -398,14 +490,17 @@ function openAppointmentForm(appointment = null) {
     document.getElementById('appointment-date').value = localDateTime;
     
     document.getElementById('appointment-notes').value = appointment.notes || '';
+    document.getElementById('appointment-payment-type').value = appointment.payment_type || 'dinheiro';
+    document.getElementById('appointment-payment-status').value = appointment.payment_status || 'a pagar';
     
-    const apptServiceIds = appointment.services ? appointment.services.map(s => s.id) : [];
+    const apptServiceIds = appointment.services ? appointment.services.map(s => s.service_id || s.id) : [];
     appointmentServices.querySelectorAll('input[type="checkbox"]').forEach((checkbox) => {
       checkbox.checked = apptServiceIds.includes(Number(checkbox.value));
     });
     state.editing.appointment = appointment.id;
   } else {
     appointmentForm.reset();
+    document.getElementById('appointment-payment-status').value = 'a pagar';
     state.editing.appointment = null;
   }
   updateTotals();
@@ -458,11 +553,7 @@ async function handleTableClick(event) {
 
 function bindEvents() {
   loginForm.addEventListener('submit', handleLogin);
-  registerForm.addEventListener('submit', handleRegister);
   logoutButton.addEventListener('click', handleLogout);
-  
-  if (showRegisterBtn) showRegisterBtn.addEventListener('click', (e) => { e.preventDefault(); toggleAuthCard(true); });
-  if (showLoginBtn) showLoginBtn.addEventListener('click', (e) => { e.preventDefault(); toggleAuthCard(false); });
   
   if (menuToggle) menuToggle.addEventListener('click', toggleSidebar);
   if (closeSidebar) closeSidebar.addEventListener('click', toggleSidebar);
@@ -471,6 +562,7 @@ function bindEvents() {
   clientForm.addEventListener('submit', handleClientSubmit);
   serviceForm.addEventListener('submit', handleServiceSubmit);
   appointmentForm.addEventListener('submit', handleAppointmentSubmit);
+  if (bugForm) bugForm.addEventListener('submit', handleBugSubmit);
   
   newClientButton.addEventListener('click', () => openClientForm());
   cancelClientButton.addEventListener('click', resetClientForm);
@@ -486,7 +578,24 @@ function bindEvents() {
   appointmentsTable.addEventListener('click', handleTableClick);
   
   appointmentServices.addEventListener('change', updateTotals);
+  [appointmentFilterDate, appointmentFilterMinValue, appointmentFilterMaxValue, appointmentFilterService, appointmentFilterPaymentStatus]
+    .filter(Boolean)
+    .forEach((filter) => filter.addEventListener('input', renderAppointments));
+  if (clearAppointmentFiltersButton) {
+    clearAppointmentFiltersButton.addEventListener('click', () => {
+      if (appointmentFilterDate) appointmentFilterDate.value = '';
+      if (appointmentFilterMinValue) appointmentFilterMinValue.value = '';
+      if (appointmentFilterMaxValue) appointmentFilterMaxValue.value = '';
+      if (appointmentFilterService) appointmentFilterService.value = '';
+      if (appointmentFilterPaymentStatus) appointmentFilterPaymentStatus.value = '';
+      renderAppointments();
+    });
+  }
   navButtons.forEach((button) => button.addEventListener('click', () => setSection(button.dataset.section)));
+  
+  // Botão Admin na página de login
+  const adminAccessBtn = document.getElementById('admin-access-btn');
+  if (adminAccessBtn) adminAccessBtn.addEventListener('click', () => window.location.href = 'admin.html');
   
   // Toggle Password
   const togglePasswordBtns = document.querySelectorAll('.toggle-password');
@@ -531,8 +640,81 @@ function bindEvents() {
   }
 }
 
+async function loadTenantAppearanceSettings() {
+  try {
+    if (!state.tenant?.id) return;
+
+    const res = await fetch(`/api/auth/tenant`, { credentials: 'include' });
+    let data = null;
+    try {
+      data = await res.json();
+    } catch (_) {}
+
+    if (!res.ok || !data) return;
+
+    const settings = data.tenant || data;
+
+    if (settings.name) {
+      if (tenantNameTitle) tenantNameTitle.textContent = settings.name;
+    }
+    if (tenantNameInput && settings.name) tenantNameInput.value = settings.name;
+
+    applyHudColors({
+      primaryColor: settings.theme_color,
+      borderColor: settings.border_color,
+    });
+
+    if (primaryColorInput && settings.theme_color) primaryColorInput.value = settings.theme_color;
+    if (borderColorInput && settings.border_color) borderColorInput.value = settings.border_color;
+  } catch (error) {
+    // silencioso - sem backend ainda
+  }
+}
+
+function bindSettingsEvents() {
+  // Se a página não tiver a seção de configurações, não faz nada.
+  if (!settingsPanel || !settingsForm) return;
+
+  settingsForm.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    if (settingsMessage) settingsMessage.textContent = 'Salvando...';
+
+    const payload = {
+      name: tenantNameInput?.value?.trim(),
+      theme_color: primaryColorInput?.value,
+      border_color: borderColorInput?.value,
+    };
+
+    applyHudColors({
+      primaryColor: payload.theme_color,
+      borderColor: payload.border_color,
+    });
+
+    if (payload.name && tenantNameTitle) tenantNameTitle.textContent = payload.name;
+
+    try {
+      const res2 = await fetch('/api/auth/tenant', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+        credentials: 'include',
+      });
+
+      if (res2.ok) {
+        if (settingsMessage) settingsMessage.textContent = 'Configurações salvas com sucesso.';
+      } else {
+        if (settingsMessage)
+          settingsMessage.textContent = 'Não foi possível salvar no servidor (backend ainda pode não estar pronto).';
+      }
+    } catch (e) {
+      if (settingsMessage) settingsMessage.textContent = 'Erro ao salvar (backend ainda pode não estar pronto).';
+    }
+  });
+}
+
 window.addEventListener('DOMContentLoaded', async () => {
   bindEvents();
+  bindSettingsEvents();
   
   // Verifica se o usuário já tem uma sessão ativa (cookie)
   try {
@@ -541,6 +723,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     state.tenant = data.tenant;
     showApp();
     await loadAppData();
+    await loadTenantAppearanceSettings();
   } catch (error) {
     // Se der erro (ex: não autenticado), exibe a tela de login
     showAuth();

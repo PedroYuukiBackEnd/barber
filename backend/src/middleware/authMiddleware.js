@@ -9,7 +9,8 @@ async function authMiddleware(req, res, next) {
   }
 
   try {
-    const payload = jwt.verify(token, process.env.JWT_SECRET);
+    const secret = process.env.JWT_SECRET || 'uma_chave_super_segura';
+    const payload = jwt.verify(token, secret);
     const user = await new Promise((resolve, reject) => {
       db.get('SELECT id, email, name, tenant_id, role FROM users WHERE id = ?', [payload.userId], (err, row) => {
         if (err) reject(err);

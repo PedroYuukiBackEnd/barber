@@ -15,6 +15,8 @@ CREATE TABLE IF NOT EXISTS users (
   email TEXT NOT NULL UNIQUE,
   password_hash TEXT NOT NULL,
   role TEXT NOT NULL DEFAULT 'admin',
+  billing_cycle_started_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  billing_paid_at DATETIME DEFAULT NULL,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -42,6 +44,8 @@ CREATE TABLE IF NOT EXISTS appointments (
   client_id INTEGER NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
   appointment_date DATETIME NOT NULL,
   total REAL NOT NULL DEFAULT 0,
+  payment_type TEXT DEFAULT 'dinheiro',
+  payment_status TEXT DEFAULT 'a pagar',
   notes TEXT DEFAULT '',
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );

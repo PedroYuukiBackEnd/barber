@@ -1,12 +1,18 @@
-require('dotenv').config();
 const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '.env') });
 const express = require('express');
 const cookieParser = require('cookie-parser');
+
+const JWT_SECRET = process.env.JWT_SECRET || 'uma_chave_super_segura';
+if (!process.env.JWT_SECRET) {
+  console.warn('AVISO: JWT_SECRET não definido em variáveis de ambiente. Usando segredo de desenvolvimento padrão. Configure backend/.env para produção.');
+}
 const cors = require('cors');
 const authRoutes = require('./src/routes/authRoutes');
 const clientRoutes = require('./src/routes/clientRoutes');
 const serviceRoutes = require('./src/routes/serviceRoutes');
 const appointmentRoutes = require('./src/routes/appointmentRoutes');
+const adminRoutes = require('./src/routes/adminRoutes');
 const { errorHandler } = require('./src/middleware/errorHandler');
 
 const app = express();
@@ -21,9 +27,13 @@ app.use('/api/auth', authRoutes);
 app.use('/api/clients', clientRoutes);
 app.use('/api/services', serviceRoutes);
 app.use('/api/appointments', appointmentRoutes);
+app.use('/api/admin', adminRoutes);
 
 const frontendPath = path.join(__dirname, '../frontend');
 app.use(express.static(frontendPath));
+app.get('/admin.html', (req, res) => {
+  res.sendFile(path.join(frontendPath, 'admin.html'));
+});
 app.get('*', (req, res) => {
   res.sendFile(path.join(frontendPath, 'index.html'));
 });

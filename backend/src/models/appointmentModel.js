@@ -11,6 +11,8 @@ function listAppointments(tenantId) {
          c.phone AS client_phone,
          a.appointment_date,
          a.total,
+         a.payment_type,
+         a.payment_status,
          a.notes
        FROM appointments a
        JOIN clients c ON c.id = a.client_id
@@ -67,11 +69,11 @@ function listAppointments(tenantId) {
   });
 }
 
-function createAppointment(tenantId, clientId, appointmentDate, total, notes, services) {
+function createAppointment(tenantId, clientId, appointmentDate, total, paymentType, paymentStatus, notes, services) {
   return new Promise((resolve, reject) => {
     db.run(
-      'INSERT INTO appointments (tenant_id, client_id, appointment_date, total, notes) VALUES (?, ?, ?, ?, ?)',
-      [tenantId, clientId, appointmentDate, total, notes],
+      'INSERT INTO appointments (tenant_id, client_id, appointment_date, total, payment_type, payment_status, notes) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [tenantId, clientId, appointmentDate, total, paymentType, paymentStatus, notes],
       function (err) {
         if (err) return reject(err);
         const appointmentId = this.lastID;
@@ -86,7 +88,7 @@ function createAppointment(tenantId, clientId, appointmentDate, total, notes, se
           stmt.run(insert.appointment_id, insert.service_id, insert.service_name, insert.service_price);
         });
         stmt.finalize();
-        db.get('SELECT id, appointment_date, total, notes FROM appointments WHERE id = ?', [appointmentId], (err, row) => {
+        db.get('SELECT id, appointment_date, total, payment_status, notes FROM appointments WHERE id = ?', [appointmentId], (err, row) => {
           if (err) reject(err);
           else resolve(row);
         });
@@ -97,7 +99,7 @@ function createAppointment(tenantId, clientId, appointmentDate, total, notes, se
 
 function getAppointmentById(id, tenantId) {
   return new Promise((resolve, reject) => {
-    db.get('SELECT id, client_id, appointment_date, total, notes FROM appointments WHERE id = ? AND tenant_id = ?', [id, tenantId], (err, row) => {
+    db.get('SELECT id, client_id, appointment_date, total, payment_type, payment_status, notes FROM appointments WHERE id = ? AND tenant_id = ?', [id, tenantId], (err, row) => {
       if (err) reject(err);
       else resolve(row);
     });
@@ -113,11 +115,11 @@ function deleteAppointmentServices(appointmentId) {
   });
 }
 
-function updateAppointment(id, tenantId, clientId, appointmentDate, total, notes, services) {
+function updateAppointment(id, tenantId, clientId, appointmentDate, total, paymentType, paymentStatus, notes, services) {
   return new Promise((resolve, reject) => {
     db.run(
-      'UPDATE appointments SET client_id = ?, appointment_date = ?, total = ?, notes = ? WHERE id = ? AND tenant_id = ?',
-      [clientId, appointmentDate, total, notes, id, tenantId],
+      'UPDATE appointments SET client_id = ?, appointment_date = ?, total = ?, payment_type = ?, payment_status = ?, notes = ? WHERE id = ? AND tenant_id = ?',
+      [clientId, appointmentDate, total, paymentType, paymentStatus, notes, id, tenantId],
       function (err) {
         if (err) return reject(err);
         deleteAppointmentServices(id).then(() => {
@@ -132,7 +134,7 @@ function updateAppointment(id, tenantId, clientId, appointmentDate, total, notes
             stmt.run(insert.appointment_id, insert.service_id, insert.service_name, insert.service_price);
           });
           stmt.finalize();
-          db.get('SELECT id, appointment_date, total, notes FROM appointments WHERE id = ?', [id], (err, row) => {
+          db.get('SELECT id, appointment_date, total, payment_status, notes FROM appointments WHERE id = ?', [id], (err, row) => {
             if (err) reject(err);
             else resolve(row);
           });

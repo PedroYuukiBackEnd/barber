@@ -2,12 +2,14 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const db = require('../config/db');
 const { createTenant, getTenantById, updateTenant } = require('../models/tenantModel');
-const { getUserByEmail, createUser, getUserById } = require('../models/userModel');
+const { getUserByEmail, getUserByEmailOrName, createUser, getUserById } = require('../models/userModel');
 
 const TOKEN_NAME = 'token';
 
+const JWT_SECRET = process.env.JWT_SECRET || 'uma_chave_super_segura';
+
 function createToken(userId) {
-  return jwt.sign({ userId }, process.env.JWT_SECRET, { expiresIn: '7d' });
+  return jwt.sign({ userId }, JWT_SECRET, { expiresIn: '7d' });
 }
 
 function sendToken(res, token) {
@@ -51,7 +53,7 @@ async function login(req, res, next) {
       return res.status(400).json({ message: 'Email e senha são obrigatórios.' });
     }
 
-    const user = await getUserByEmail(email);
+    const user = await getUserByEmailOrName(email);
     if (!user) {
       return res.status(401).json({ message: 'Credenciais inválidas.' });
     }
@@ -97,8 +99,8 @@ async function getTenant(req, res, next) {
 
 async function updateTenantSettings(req, res, next) {
   try {
-    const { name, theme_color, logo_url } = req.body;
-    const tenant = await updateTenant(req.user.tenant_id, { name, theme_color, logo_url });
+    const { name, theme_color } = req.body;
+    const tenant = await updateTenant(req.user.tenant_id, { name, theme_color });
     res.json({ tenant });
   } catch (error) {
     next(error);

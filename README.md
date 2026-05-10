@@ -1,10 +1,10 @@
-# 💈 Sistema Barber SaaS
+# 💈 Sistema Barber
 
 Sistema de gerenciamento profissional e responsivo para barbearias, focado em alta escalabilidade (multi-tenant). O backend Node.js lida com sessões (Cookies JWT) e persiste dados no SQLite, permitindo que você venda assinaturas para dezenas de barbearias e cada uma acesse pelo seu próprio painel.
 
 ---
 
-## 🚀 Funcionalidades SaaS
+## 🚀 Funcionalidades 
 - ✅ **Cadastro de Barbearias (Multi-Tenant)**: Cada cliente seu pode criar sua própria conta e gerenciar seus próprios dados sem ver os dados dos outros clientes.
 - ✅ **API Restful Backend**: Totalmente isolado. `fetch` nativo no Frontend conversa com rotas seguras `/api/...`.
 - ✅ **Dashboard Premium**: Design Dark Mode + Prata Metálico com Glassmorphism.

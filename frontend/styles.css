@@ -232,8 +232,13 @@ select {
   color: var(--primary-color);
 }
 
-.input-with-icon input {
+.input-with-icon input,
+.input-with-icon select {
   padding-left: 48px;
+}
+
+.input-with-icon select {
+  padding-right: 48px;
 }
 
 .input-with-icon input.has-toggle {
@@ -561,6 +566,32 @@ td.actions button {
 .summary-value {
   font-size: 1.5rem;
   color: var(--primary-color);
+}
+
+.appointment-filters {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 16px;
+  align-items: end;
+  padding: 20px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.appointment-filters button {
+  min-height: 52px;
+}
+
+.payment-status {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  margin-top: 6px;
+  padding: 4px 8px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  line-height: 1;
 }
 
 /* Animations */
