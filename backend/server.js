@@ -8,6 +8,7 @@ if (!process.env.JWT_SECRET) {
   console.warn('AVISO: JWT_SECRET não definido em variáveis de ambiente. Usando segredo de desenvolvimento padrão. Configure backend/.env para produção.');
 }
 const cors = require('cors');
+const { initDatabase } = require('./src/database/init');
 const authRoutes = require('./src/routes/authRoutes');
 const clientRoutes = require('./src/routes/clientRoutes');
 const serviceRoutes = require('./src/routes/serviceRoutes');
@@ -40,6 +41,13 @@ app.get('*', (req, res) => {
 
 app.use(errorHandler);
 
-app.listen(PORT, () => {
-  console.log(`Backend rodando em http://localhost:${PORT}`);
-});
+initDatabase()
+  .then(() => {
+    app.listen(PORT, () => {
+      console.log(`Backend rodando em http://localhost:${PORT}`);
+    });
+  })
+  .catch((error) => {
+    console.error('Erro ao preparar banco de dados:', error);
+    process.exit(1);
+  });
