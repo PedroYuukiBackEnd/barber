@@ -75,6 +75,7 @@ const appointmentFilterMaxValue = document.getElementById('appointment-filter-ma
 const appointmentFilterService = document.getElementById('appointment-filter-service');
 const appointmentFilterPaymentStatus = document.getElementById('appointment-filter-payment-status');
 const clearAppointmentFiltersButton = document.getElementById('clear-appointment-filters');
+const historyFilterClient = document.getElementById('history-filter-client');
 const historyFilterDate = document.getElementById('history-filter-date');
 const historyFilterTime = document.getElementById('history-filter-time');
 const historyFilterMinValue = document.getElementById('history-filter-min-value');
@@ -198,15 +199,19 @@ function getPaymentStatusLabel(paymentStatus) {
 
 function normalizeAppointmentDate(value) {
   if (!value) return '';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value.slice(0, 16);
-  return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+  const raw = String(value);
+  const match = raw.match(/^(\d{4}-\d{2}-\d{2})[T\s](\d{2}:\d{2})/);
+  if (match) return `${match[1]}T${match[2]}`;
+  return raw.slice(0, 16);
 }
 
 function getDefaultAppointmentDateTime() {
   const date = new Date();
   date.setHours(7, 0, 0, 0);
-  return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}T07:00`;
 }
 
 function setDefaultAppointmentDateTime() {
@@ -216,6 +221,15 @@ function setDefaultAppointmentDateTime() {
 
 function getAppointmentTotal(appointment) {
   return Number(appointment.total_price ?? appointment.total ?? 0);
+}
+
+function formatDateTime(value) {
+  const normalized = normalizeAppointmentDate(value);
+  if (!normalized) return '-';
+  const [datePart, timePart] = normalized.split('T');
+  if (!datePart || !timePart) return normalized;
+  const [year, month, day] = datePart.split('-');
+  return `${day}/${month}/${year}, ${timePart}`;
 }
 
 function getFilteredAppointments() {
@@ -255,6 +269,7 @@ function getHistoryServices(historyItem) {
 }
 
 function getFilteredServiceHistory() {
+  const clientName = historyFilterClient?.value || '';
   const selectedDate = historyFilterDate?.value || '';
   const selectedTime = historyFilterTime?.value || '';
   const minValue = historyFilterMinValue?.value ? Number(historyFilterMinValue.value) : null;
@@ -270,7 +285,8 @@ function getFilteredServiceHistory() {
     const hasService = !serviceId || services.some((service) => Number(service.service_id || service.id) === serviceId);
     const currentPaymentType = item.payment_type || 'dinheiro';
 
-    return (!selectedDate || historyDate === selectedDate)
+    return (!clientName || item.client_name === clientName)
+      && (!selectedDate || historyDate === selectedDate)
       && (!selectedTime || historyTime === selectedTime)
       && (minValue === null || total >= minValue)
       && (maxValue === null || total <= maxValue)
@@ -342,7 +358,7 @@ function renderAppointments() {
     return `
     <tr>
       <td>${escapeHtml(clientName)}</td>
-      <td>${new Date(appointment.appointment_date).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}</td>
+      <td>${formatDateTime(appointment.appointment_date)}</td>
       <td>${escapeHtml(servicesText)}</td>
       <td>${formatCurrency(totalPrice)}</td>
       <td>
@@ -377,11 +393,11 @@ function renderServiceHistory() {
     return `
     <tr>
       <td>${escapeHtml(item.client_name)}</td>
-      <td>${new Date(item.appointment_date).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}</td>
+      <td>${formatDateTime(item.appointment_date)}</td>
       <td>${escapeHtml(servicesText)}</td>
       <td>${formatCurrency(totalPrice)}</td>
       <td>${getPaymentTypeLabel(item.payment_type || 'dinheiro')}</td>
-      <td>${new Date(item.completed_at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}</td>
+      <td>${formatDateTime(item.completed_at)}</td>
     </tr>`;
   }).join('');
 }
@@ -415,6 +431,21 @@ function fillHistoryServiceFilter() {
   historyFilterService.value = selectedValue;
 }
 
+function fillHistoryClientFilter() {
+  if (!historyFilterClient) return;
+  const selectedValue = historyFilterClient.value;
+  const clientNames = Array.from(new Set(
+    state.serviceHistory
+      .map((item) => item.client_name)
+      .filter(Boolean)
+  )).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+
+  historyFilterClient.innerHTML = '<option value="">Todos</option>' + clientNames.map((name) => (
+    `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`
+  )).join('');
+  historyFilterClient.value = selectedValue;
+}
+
 function fillClientSelect() {
   appointmentClient.innerHTML = state.clients.map((client) => `<option value="${client.id}">${escapeHtml(client.name)}</option>`).join('');
 }
@@ -441,6 +472,7 @@ async function loadAppData() {
     fillClientSelect();
     fillAppointmentServices();
     fillAppointmentServiceFilter();
+    fillHistoryClientFilter();
     fillHistoryServiceFilter();
   } catch (error) {
     console.error('Erro ao carregar dados:', error);
@@ -613,10 +645,7 @@ function openAppointmentForm(appointment = null) {
     document.getElementById('appointment-id').value = appointment.id;
     appointmentClient.value = appointment.client_id;
     
-    // Converter data para o formato do input datetime-local
-    const dateObj = new Date(appointment.appointment_date);
-    const localDateTime = new Date(dateObj.getTime() - dateObj.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
-    document.getElementById('appointment-date').value = localDateTime;
+    document.getElementById('appointment-date').value = normalizeAppointmentDate(appointment.appointment_date);
     
     document.getElementById('appointment-notes').value = appointment.notes || '';
     document.getElementById('appointment-payment-type').value = appointment.payment_type || 'dinheiro';
@@ -728,11 +757,12 @@ function bindEvents() {
       renderAppointments();
     });
   }
-  [historyFilterDate, historyFilterTime, historyFilterMinValue, historyFilterMaxValue, historyFilterService, historyFilterPaymentType]
+  [historyFilterClient, historyFilterDate, historyFilterTime, historyFilterMinValue, historyFilterMaxValue, historyFilterService, historyFilterPaymentType]
     .filter(Boolean)
     .forEach((filter) => filter.addEventListener('input', renderServiceHistory));
   if (clearHistoryFiltersButton) {
     clearHistoryFiltersButton.addEventListener('click', () => {
+      if (historyFilterClient) historyFilterClient.value = '';
       if (historyFilterDate) historyFilterDate.value = '';
       if (historyFilterTime) historyFilterTime.value = '';
       if (historyFilterMinValue) historyFilterMinValue.value = '';
