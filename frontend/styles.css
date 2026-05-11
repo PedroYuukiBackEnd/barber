@@ -312,8 +312,13 @@ tr:hover td {
 }
 
 td.actions {
+  white-space: nowrap;
+}
+
+.action-buttons {
   display: flex;
   gap: 8px;
+  flex-wrap: wrap;
 }
 
 td.actions button {
@@ -538,6 +543,11 @@ td.actions button {
   font-size: 1.2rem;
   padding-bottom: 16px;
   border-bottom: 1px solid var(--border-color);
+}
+
+.form-subtitle {
+  margin: -12px 0 24px;
+  color: var(--text-secondary);
 }
 
 .form-actions {

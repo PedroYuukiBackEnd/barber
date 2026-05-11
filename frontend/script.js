@@ -67,6 +67,7 @@ const appointmentClient = document.getElementById('appointment-client');
 const appointmentServices = document.getElementById('appointment-services');
 const appointmentTotal = document.getElementById('appointment-total');
 const appointmentFilterDate = document.getElementById('appointment-filter-date');
+const appointmentFilterTime = document.getElementById('appointment-filter-time');
 const appointmentFilterMinValue = document.getElementById('appointment-filter-min-value');
 const appointmentFilterMaxValue = document.getElementById('appointment-filter-max-value');
 const appointmentFilterService = document.getElementById('appointment-filter-service');
@@ -155,6 +156,7 @@ function resetAppointmentForm() {
   appointmentForm.reset();
   appointmentForm.classList.add('hidden');
   document.getElementById('appointment-id').value = '';
+  setDefaultAppointmentDateTime();
   appointmentTotal.textContent = 'R$ 0,00';
 }
 
@@ -192,12 +194,24 @@ function normalizeAppointmentDate(value) {
   return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
 }
 
+function getDefaultAppointmentDateTime() {
+  const date = new Date();
+  date.setHours(7, 0, 0, 0);
+  return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+}
+
+function setDefaultAppointmentDateTime() {
+  const appointmentDateInput = document.getElementById('appointment-date');
+  if (appointmentDateInput) appointmentDateInput.value = getDefaultAppointmentDateTime();
+}
+
 function getAppointmentTotal(appointment) {
   return Number(appointment.total_price ?? appointment.total ?? 0);
 }
 
 function getFilteredAppointments() {
   const selectedDate = appointmentFilterDate?.value || '';
+  const selectedTime = appointmentFilterTime?.value || '';
   const minValue = appointmentFilterMinValue?.value ? Number(appointmentFilterMinValue.value) : null;
   const maxValue = appointmentFilterMaxValue?.value ? Number(appointmentFilterMaxValue.value) : null;
   const serviceId = appointmentFilterService?.value ? Number(appointmentFilterService.value) : null;
@@ -205,12 +219,14 @@ function getFilteredAppointments() {
 
   return state.appointments.filter((appointment) => {
     const appointmentDate = normalizeAppointmentDate(appointment.appointment_date).slice(0, 10);
+    const appointmentTime = normalizeAppointmentDate(appointment.appointment_date).slice(11, 16);
     const total = getAppointmentTotal(appointment);
     const services = appointment.services || [];
     const hasService = !serviceId || services.some((service) => Number(service.service_id || service.id) === serviceId);
     const currentStatus = appointment.payment_status || 'a pagar';
 
     return (!selectedDate || appointmentDate === selectedDate)
+      && (!selectedTime || appointmentTime === selectedTime)
       && (minValue === null || total >= minValue)
       && (maxValue === null || total <= maxValue)
       && hasService
@@ -240,8 +256,10 @@ function renderClients() {
       <td>${escapeHtml(client.phone || '-')}</td>
       <td>${escapeHtml(client.notes || '-')}</td>
       <td class="actions">
-        <button class="button-secondary" data-action="edit-client" data-id="${client.id}">Editar</button>
-        <button class="button-secondary" data-action="delete-client" data-id="${client.id}">Remover</button>
+        <div class="action-buttons">
+          <button class="button-secondary" data-action="edit-client" data-id="${client.id}">Editar</button>
+          <button class="button-secondary" data-action="delete-client" data-id="${client.id}">Remover</button>
+        </div>
       </td>
     </tr>`).join('');
 }
@@ -253,8 +271,10 @@ function renderServices() {
       <td>${formatCurrency(service.price)}</td>
       <td>${escapeHtml(service.description || '-')}</td>
       <td class="actions">
-        <button class="button-secondary" data-action="edit-service" data-id="${service.id}">Editar</button>
-        <button class="button-secondary" data-action="delete-service" data-id="${service.id}">Remover</button>
+        <div class="action-buttons">
+          <button class="button-secondary" data-action="edit-service" data-id="${service.id}">Editar</button>
+          <button class="button-secondary" data-action="delete-service" data-id="${service.id}">Remover</button>
+        </div>
       </td>
     </tr>`).join('');
 }
@@ -285,8 +305,11 @@ function renderAppointments() {
         <span class="payment-status">${getPaymentStatusLabel(paymentStatus)}</span>
       </td>
       <td class="actions">
-        <button class="button-secondary" data-action="edit-appointment" data-id="${appointment.id}">Editar</button>
-        <button class="button-secondary" data-action="delete-appointment" data-id="${appointment.id}">Remover</button>
+        <div class="action-buttons">
+          <button class="button-secondary" data-action="edit-appointment" data-id="${appointment.id}">Editar</button>
+          <button class="button-secondary" data-action="finish-appointment" data-id="${appointment.id}">Trabalho finalizado</button>
+          <button class="button-secondary" data-action="delete-appointment" data-id="${appointment.id}">Remover</button>
+        </div>
       </td>
     </tr>`;
   }).join('');
@@ -522,6 +545,7 @@ function openAppointmentForm(appointment = null) {
     state.editing.appointment = appointment.id;
   } else {
     appointmentForm.reset();
+    setDefaultAppointmentDateTime();
     document.getElementById('appointment-payment-status').value = 'a pagar';
     state.editing.appointment = null;
   }
@@ -568,6 +592,12 @@ async function handleTableClick(event) {
         await loadAppData();
       }
     }
+    if (action === 'finish-appointment') {
+      if (confirm('Marcar este trabalho como finalizado? O agendamento será removido da lista.')) {
+        await apiFetch(`/api/appointments/${id}`, 'DELETE');
+        await loadAppData();
+      }
+    }
   } catch (error) {
     alert(error.message);
   }
@@ -600,12 +630,13 @@ function bindEvents() {
   appointmentsTable.addEventListener('click', handleTableClick);
   
   appointmentServices.addEventListener('change', updateTotals);
-  [appointmentFilterDate, appointmentFilterMinValue, appointmentFilterMaxValue, appointmentFilterService, appointmentFilterPaymentStatus]
+  [appointmentFilterDate, appointmentFilterTime, appointmentFilterMinValue, appointmentFilterMaxValue, appointmentFilterService, appointmentFilterPaymentStatus]
     .filter(Boolean)
     .forEach((filter) => filter.addEventListener('input', renderAppointments));
   if (clearAppointmentFiltersButton) {
     clearAppointmentFiltersButton.addEventListener('click', () => {
       if (appointmentFilterDate) appointmentFilterDate.value = '';
+      if (appointmentFilterTime) appointmentFilterTime.value = '';
       if (appointmentFilterMinValue) appointmentFilterMinValue.value = '';
       if (appointmentFilterMaxValue) appointmentFilterMaxValue.value = '';
       if (appointmentFilterService) appointmentFilterService.value = '';
