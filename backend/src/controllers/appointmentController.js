@@ -1,5 +1,13 @@
 const db = require('../config/db');
-const { listAppointments, createAppointment, getAppointmentById, updateAppointment, deleteAppointment } = require('../models/appointmentModel');
+const {
+  listAppointments,
+  createAppointment,
+  getAppointmentById,
+  updateAppointment,
+  deleteAppointment,
+  finishAppointment,
+  listServiceHistory,
+} = require('../models/appointmentModel');
 const { getClientById } = require('../models/clientModel');
 const { listServicesByIds } = require('../models/serviceModel');
 
@@ -78,4 +86,34 @@ async function deleteAppointmentHandler(req, res, next) {
   }
 }
 
-module.exports = { listAppointments: listAppointmentsHandler, createAppointment: createAppointmentHandler, updateAppointment: updateAppointmentHandler, deleteAppointment: deleteAppointmentHandler };
+async function finishAppointmentHandler(req, res, next) {
+  try {
+    const appointmentId = Number(req.params.id);
+    const history = await finishAppointment(appointmentId, req.user.tenant_id);
+    if (!history) {
+      return res.status(404).json({ message: 'Agendamento nao encontrado.' });
+    }
+
+    res.status(201).json({ history });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function listServiceHistoryHandler(req, res, next) {
+  try {
+    const history = await listServiceHistory(req.user.tenant_id);
+    res.json({ history });
+  } catch (error) {
+    next(error);
+  }
+}
+
+module.exports = {
+  listAppointments: listAppointmentsHandler,
+  createAppointment: createAppointmentHandler,
+  updateAppointment: updateAppointmentHandler,
+  deleteAppointment: deleteAppointmentHandler,
+  finishAppointment: finishAppointmentHandler,
+  listServiceHistory: listServiceHistoryHandler,
+};

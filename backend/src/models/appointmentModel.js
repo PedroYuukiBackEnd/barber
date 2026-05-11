@@ -145,4 +145,116 @@ function deleteAppointment(id, tenantId) {
   });
 }
 
-module.exports = { listAppointments, createAppointment, getAppointmentById, updateAppointment, deleteAppointment };
+async function getAppointmentSnapshot(id, tenantId) {
+  const appointment = await new Promise((resolve, reject) => {
+    db.get(
+      `SELECT
+         a.id,
+         a.client_id,
+         c.name AS client_name,
+         c.phone AS client_phone,
+         a.appointment_date,
+         a.total,
+         a.payment_type,
+         a.payment_status,
+         a.notes
+       FROM appointments a
+       JOIN clients c ON c.id = a.client_id
+       WHERE a.id = ? AND a.tenant_id = ?`,
+      [id, tenantId],
+      (err, row) => {
+        if (err) reject(err);
+        else resolve(row);
+      }
+    );
+  });
+
+  if (!appointment) return null;
+
+  const services = await new Promise((resolve, reject) => {
+    db.all(
+      `SELECT service_id, service_name, service_price
+       FROM appointment_services
+       WHERE appointment_id = ?
+       ORDER BY id`,
+      [id],
+      (err, rows) => {
+        if (err) reject(err);
+        else resolve(rows);
+      }
+    );
+  });
+
+  return { ...appointment, services };
+}
+
+async function finishAppointment(id, tenantId) {
+  const appointment = await getAppointmentSnapshot(id, tenantId);
+  if (!appointment) return null;
+
+  const history = await new Promise((resolve, reject) => {
+    db.get(
+      `INSERT INTO service_history (
+         tenant_id,
+         appointment_id,
+         client_name,
+         client_phone,
+         appointment_date,
+         total,
+         payment_type,
+         payment_status,
+         notes,
+         services
+       )
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?::jsonb)
+       RETURNING id, tenant_id, appointment_id, client_name, client_phone, appointment_date,
+                 total, payment_type, payment_status, notes, services, completed_at`,
+      [
+        tenantId,
+        appointment.id,
+        appointment.client_name,
+        appointment.client_phone || '',
+        appointment.appointment_date,
+        appointment.total,
+        appointment.payment_type || 'dinheiro',
+        appointment.payment_status || 'ja pago',
+        appointment.notes || '',
+        JSON.stringify(appointment.services || []),
+      ],
+      (err, row) => {
+        if (err) reject(err);
+        else resolve(row);
+      }
+    );
+  });
+
+  await deleteAppointment(id, tenantId);
+  return history;
+}
+
+function listServiceHistory(tenantId) {
+  return new Promise((resolve, reject) => {
+    db.all(
+      `SELECT id, appointment_id, client_name, client_phone, appointment_date, total,
+              payment_type, payment_status, notes, services, completed_at
+       FROM service_history
+       WHERE tenant_id = ?
+       ORDER BY completed_at DESC`,
+      [tenantId],
+      (err, rows) => {
+        if (err) reject(err);
+        else resolve(rows);
+      }
+    );
+  });
+}
+
+module.exports = {
+  listAppointments,
+  createAppointment,
+  getAppointmentById,
+  updateAppointment,
+  deleteAppointment,
+  finishAppointment,
+  listServiceHistory,
+};

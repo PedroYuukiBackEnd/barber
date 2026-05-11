@@ -4,6 +4,7 @@ const state = {
   clients: [],
   services: [],
   appointments: [],
+  serviceHistory: [],
   editing: { client: null, service: null, appointment: null },
 };
 
@@ -63,6 +64,7 @@ const closeSidebar = document.getElementById('close-sidebar');
 const clientsTable = document.getElementById('clients-table');
 const servicesTable = document.getElementById('services-table');
 const appointmentsTable = document.getElementById('appointments-table');
+const historyTable = document.getElementById('history-table');
 const appointmentClient = document.getElementById('appointment-client');
 const appointmentServices = document.getElementById('appointment-services');
 const appointmentTotal = document.getElementById('appointment-total');
@@ -73,6 +75,13 @@ const appointmentFilterMaxValue = document.getElementById('appointment-filter-ma
 const appointmentFilterService = document.getElementById('appointment-filter-service');
 const appointmentFilterPaymentStatus = document.getElementById('appointment-filter-payment-status');
 const clearAppointmentFiltersButton = document.getElementById('clear-appointment-filters');
+const historyFilterDate = document.getElementById('history-filter-date');
+const historyFilterTime = document.getElementById('history-filter-time');
+const historyFilterMinValue = document.getElementById('history-filter-min-value');
+const historyFilterMaxValue = document.getElementById('history-filter-max-value');
+const historyFilterService = document.getElementById('history-filter-service');
+const historyFilterPaymentType = document.getElementById('history-filter-payment-type');
+const clearHistoryFiltersButton = document.getElementById('clear-history-filters');
 
 const clientForm = document.getElementById('client-form');
 const serviceForm = document.getElementById('service-form');
@@ -234,6 +243,42 @@ function getFilteredAppointments() {
   });
 }
 
+function getHistoryServices(historyItem) {
+  if (Array.isArray(historyItem.services)) return historyItem.services;
+  if (!historyItem.services) return [];
+  try {
+    const parsed = JSON.parse(historyItem.services);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (error) {
+    return [];
+  }
+}
+
+function getFilteredServiceHistory() {
+  const selectedDate = historyFilterDate?.value || '';
+  const selectedTime = historyFilterTime?.value || '';
+  const minValue = historyFilterMinValue?.value ? Number(historyFilterMinValue.value) : null;
+  const maxValue = historyFilterMaxValue?.value ? Number(historyFilterMaxValue.value) : null;
+  const serviceId = historyFilterService?.value ? Number(historyFilterService.value) : null;
+  const paymentType = historyFilterPaymentType?.value || '';
+
+  return state.serviceHistory.filter((item) => {
+    const historyDate = normalizeAppointmentDate(item.appointment_date).slice(0, 10);
+    const historyTime = normalizeAppointmentDate(item.appointment_date).slice(11, 16);
+    const total = getAppointmentTotal(item);
+    const services = getHistoryServices(item);
+    const hasService = !serviceId || services.some((service) => Number(service.service_id || service.id) === serviceId);
+    const currentPaymentType = item.payment_type || 'dinheiro';
+
+    return (!selectedDate || historyDate === selectedDate)
+      && (!selectedTime || historyTime === selectedTime)
+      && (minValue === null || total >= minValue)
+      && (maxValue === null || total <= maxValue)
+      && hasService
+      && (!paymentType || currentPaymentType === paymentType);
+  });
+}
+
 function hasAppointmentScheduleConflict(appointmentDate, currentAppointmentId = null) {
   const normalizedDate = normalizeAppointmentDate(appointmentDate);
   return state.appointments.some((appointment) => {
@@ -315,6 +360,32 @@ function renderAppointments() {
   }).join('');
 }
 
+function renderServiceHistory() {
+  if (!historyTable) return;
+  const history = getFilteredServiceHistory();
+
+  if (!history.length) {
+    historyTable.innerHTML = '<tr><td colspan="6">Nenhum serviço finalizado encontrado.</td></tr>';
+    return;
+  }
+
+  historyTable.innerHTML = history.map((item) => {
+    const services = getHistoryServices(item);
+    const servicesText = services.length ? services.map((service) => service.service_name || service.name).join(', ') : '-';
+    const totalPrice = getAppointmentTotal(item);
+
+    return `
+    <tr>
+      <td>${escapeHtml(item.client_name)}</td>
+      <td>${new Date(item.appointment_date).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}</td>
+      <td>${escapeHtml(servicesText)}</td>
+      <td>${formatCurrency(totalPrice)}</td>
+      <td>${getPaymentTypeLabel(item.payment_type || 'dinheiro')}</td>
+      <td>${new Date(item.completed_at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}</td>
+    </tr>`;
+  }).join('');
+}
+
 function fillAppointmentServices() {
   appointmentServices.innerHTML = state.services.map((service) => `
     <label class="checkbox-item">
@@ -335,6 +406,15 @@ function fillAppointmentServiceFilter() {
   appointmentFilterService.value = selectedValue;
 }
 
+function fillHistoryServiceFilter() {
+  if (!historyFilterService) return;
+  const selectedValue = historyFilterService.value;
+  historyFilterService.innerHTML = '<option value="">Todos</option>' + state.services.map((service) => (
+    `<option value="${service.id}">${escapeHtml(service.name)}</option>`
+  )).join('');
+  historyFilterService.value = selectedValue;
+}
+
 function fillClientSelect() {
   appointmentClient.innerHTML = state.clients.map((client) => `<option value="${client.id}">${escapeHtml(client.name)}</option>`).join('');
 }
@@ -342,22 +422,26 @@ function fillClientSelect() {
 // --- Data Loading ---
 async function loadAppData() {
   try {
-    const [clientsRes, servicesRes, appointmentsRes] = await Promise.all([
+    const [clientsRes, servicesRes, appointmentsRes, historyRes] = await Promise.all([
       apiFetch('/api/clients'),
       apiFetch('/api/services'),
-      apiFetch('/api/appointments')
+      apiFetch('/api/appointments'),
+      apiFetch('/api/appointments/history')
     ]);
     
     state.clients = clientsRes.clients || [];
     state.services = servicesRes.services || [];
     state.appointments = appointmentsRes.appointments || [];
+    state.serviceHistory = historyRes.history || [];
 
     renderClients();
     renderServices();
     renderAppointments();
+    renderServiceHistory();
     fillClientSelect();
     fillAppointmentServices();
     fillAppointmentServiceFilter();
+    fillHistoryServiceFilter();
   } catch (error) {
     console.error('Erro ao carregar dados:', error);
     alert('Erro ao sincronizar dados com o servidor.');
@@ -594,7 +678,7 @@ async function handleTableClick(event) {
     }
     if (action === 'finish-appointment') {
       if (confirm('Marcar este trabalho como finalizado? O agendamento será removido da lista.')) {
-        await apiFetch(`/api/appointments/${id}`, 'DELETE');
+        await apiFetch(`/api/appointments/${id}/finish`, 'POST');
         await loadAppData();
       }
     }
@@ -642,6 +726,20 @@ function bindEvents() {
       if (appointmentFilterService) appointmentFilterService.value = '';
       if (appointmentFilterPaymentStatus) appointmentFilterPaymentStatus.value = '';
       renderAppointments();
+    });
+  }
+  [historyFilterDate, historyFilterTime, historyFilterMinValue, historyFilterMaxValue, historyFilterService, historyFilterPaymentType]
+    .filter(Boolean)
+    .forEach((filter) => filter.addEventListener('input', renderServiceHistory));
+  if (clearHistoryFiltersButton) {
+    clearHistoryFiltersButton.addEventListener('click', () => {
+      if (historyFilterDate) historyFilterDate.value = '';
+      if (historyFilterTime) historyFilterTime.value = '';
+      if (historyFilterMinValue) historyFilterMinValue.value = '';
+      if (historyFilterMaxValue) historyFilterMaxValue.value = '';
+      if (historyFilterService) historyFilterService.value = '';
+      if (historyFilterPaymentType) historyFilterPaymentType.value = '';
+      renderServiceHistory();
     });
   }
   navButtons.forEach((button) => button.addEventListener('click', () => setSection(button.dataset.section)));

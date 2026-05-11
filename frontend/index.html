@@ -85,6 +85,9 @@
         <button class="nav-button" data-section="appointments-panel">
           <i class="ph ph-calendar-check"></i> Agendamentos
         </button>
+        <button class="nav-button" data-section="history-panel">
+          <i class="ph ph-clock-counter-clockwise"></i> Histórico
+        </button>
         <button class="nav-button" data-section="bugs-panel">
           <i class="ph ph-bug"></i> Relatar Problema
         </button>
@@ -336,6 +339,71 @@
                   </tr>
                 </thead>
                 <tbody id="appointments-table"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- Painel de Histórico -->
+        <section id="history-panel" class="panel hidden fade-in">
+          <div class="panel-header">
+            <div class="panel-title">
+              <h2><i class="ph ph-clock-counter-clockwise"></i> Histórico de Serviços</h2>
+              <p>Consulte os trabalhos finalizados e filtre por período, valor, pagamento e serviço.</p>
+            </div>
+          </div>
+
+          <div class="table-card glass-panel">
+            <div class="appointment-filters">
+              <div class="input-group">
+                <label>Data</label>
+                <input id="history-filter-date" type="date" />
+              </div>
+              <div class="input-group">
+                <label>Horário</label>
+                <input id="history-filter-time" type="time" />
+              </div>
+              <div class="input-group">
+                <label>Valor mínimo</label>
+                <input id="history-filter-min-value" type="number" step="0.01" min="0" placeholder="0.00" />
+              </div>
+              <div class="input-group">
+                <label>Valor máximo</label>
+                <input id="history-filter-max-value" type="number" step="0.01" min="0" placeholder="0.00" />
+              </div>
+              <div class="input-group">
+                <label>Serviço</label>
+                <select id="history-filter-service">
+                  <option value="">Todos</option>
+                </select>
+              </div>
+              <div class="input-group">
+                <label>Pagamento</label>
+                <select id="history-filter-payment-type">
+                  <option value="">Todos</option>
+                  <option value="dinheiro">Dinheiro</option>
+                  <option value="pix">PIX</option>
+                  <option value="debito">Débito</option>
+                  <option value="credito">Crédito</option>
+                </select>
+              </div>
+              <button class="button-secondary" type="button" id="clear-history-filters">
+                <i class="ph ph-x-circle"></i> Limpar
+              </button>
+            </div>
+            <div class="table-wrapper">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Cliente</th>
+                    <th>Data</th>
+                    <th>Serviços</th>
+                    <th>Valor</th>
+                    <th>Pagamento</th>
+                    <th>Finalizado em</th>
+                  </tr>
+                </thead>
+                <tbody id="history-table"></tbody>
               </table>
             </div>
           </div>

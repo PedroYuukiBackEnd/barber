@@ -14,6 +14,7 @@ Sistema web para gerenciar barbearias com login, clientes, servicos, agendamento
 - Dados de clientes, servicos e agendamentos isolados por `tenant_id`.
 - Cadastro publico desativado por padrao em producao.
 - Formulario de recomendacoes dentro de Configuracoes, vinculado ao usuario e a barbearia logados.
+- Historico de servicos finalizados com filtros por data, horario, valor, pagamento e servico.
 
 ## Variaveis de ambiente
 

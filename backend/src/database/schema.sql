@@ -66,3 +66,18 @@ CREATE TABLE IF NOT EXISTS recommendations (
   recommendation TEXT NOT NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TABLE IF NOT EXISTS service_history (
+  id SERIAL PRIMARY KEY,
+  tenant_id INTEGER NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  appointment_id INTEGER,
+  client_name TEXT NOT NULL,
+  client_phone TEXT DEFAULT '',
+  appointment_date TIMESTAMP NOT NULL,
+  total NUMERIC(10, 2) NOT NULL DEFAULT 0,
+  payment_type TEXT DEFAULT 'dinheiro',
+  payment_status TEXT DEFAULT 'ja pago',
+  notes TEXT DEFAULT '',
+  services JSONB NOT NULL DEFAULT '[]'::jsonb,
+  completed_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
