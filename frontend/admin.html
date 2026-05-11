@@ -218,7 +218,7 @@
                   </select>
                 </div>
               </div>
-              <div class="input-group full-width">
+              <div class="input-group full-width" id="edit-billing-type-group">
                 <label for="edit-billing-type">CobranÃ§a</label>
                 <div class="input-with-icon">
                   <i class="ph ph-credit-card"></i>
@@ -411,9 +411,11 @@
     const editName = document.getElementById('edit-name');
     const editAccess = document.getElementById('edit-access');
     const editRole = document.getElementById('edit-role');
+    const editBillingTypeGroup = document.getElementById('edit-billing-type-group');
     const editBillingType = document.getElementById('edit-billing-type');
     const editPassword = document.getElementById('edit-password');
     const editAdminNotes = document.getElementById('edit-admin-notes');
+    const registerBillingTypeGroup = document.getElementById('register-billing-type')?.closest('.input-group');
     let adminUsers = [];
     let adminRecommendations = [];
     let adminBugReports = [];
@@ -505,6 +507,17 @@
       document.querySelectorAll('.billing-paid-checkbox').forEach((checkbox) => {
         checkbox.addEventListener('change', () => handleBillingPaidChange(checkbox));
       });
+    }
+
+    function syncBillingTypeVisibility() {
+      if (editBillingTypeGroup && editRole) {
+        const isSuperadmin = editRole.value === 'superadmin';
+        editBillingTypeGroup.classList.toggle('hidden', isSuperadmin);
+        if (isSuperadmin && editBillingType) editBillingType.value = 'subscription';
+      }
+      if (registerBillingTypeGroup) {
+        registerBillingTypeGroup.classList.remove('hidden');
+      }
     }
 
     function renderNotifications() {
@@ -806,6 +819,7 @@
       editAccess.value = user.email;
       editRole.value = user.role;
       editBillingType.value = user.billing_type || 'subscription';
+      syncBillingTypeVisibility();
       editAdminNotes.value = user.admin_notes || '';
       editMessage.textContent = '';
       editUserSection.classList.remove('hidden');
@@ -850,6 +864,7 @@
 
         if (data.user.role !== 'superadmin') {
           adminLoginMessage.textContent = 'Acesso autorizado apenas para superadmins.';
+          await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
           return;
         }
 
@@ -892,6 +907,7 @@
     adminLogoutButton.addEventListener('click', handleLogout);
     adminLogoutButtonMobile.addEventListener('click', handleLogout);
     userRoleFilter.addEventListener('change', loadUsers);
+    if (editRole) editRole.addEventListener('change', syncBillingTypeVisibility);
     if (closeBugDetailButton) closeBugDetailButton.addEventListener('click', closeBugReportDetail);
     if (resolveBugButton) resolveBugButton.addEventListener('click', handleResolveBugReport);
     if (recommendationsList) {

@@ -80,6 +80,10 @@ const appointmentFilterMaxValue = document.getElementById('appointment-filter-ma
 const appointmentFilterService = document.getElementById('appointment-filter-service');
 const appointmentFilterPaymentStatus = document.getElementById('appointment-filter-payment-status');
 const clearAppointmentFiltersButton = document.getElementById('clear-appointment-filters');
+const appointmentPaymentStatus = document.getElementById('appointment-payment-status');
+const appointmentPaymentProofGroup = document.getElementById('appointment-payment-proof-group');
+const appointmentPaymentProof = document.getElementById('appointment-payment-proof');
+const appointmentPaymentProofCurrent = document.getElementById('appointment-payment-proof-current');
 const historyFilterClient = document.getElementById('history-filter-client');
 const historyFilterDate = document.getElementById('history-filter-date');
 const historyFilterTime = document.getElementById('history-filter-time');
@@ -196,6 +200,8 @@ function resetAppointmentForm() {
   appointmentForm.classList.add('hidden');
   document.getElementById('appointment-id').value = '';
   setDefaultAppointmentDateTime();
+  if (appointmentPaymentStatus) appointmentPaymentStatus.value = 'a pagar';
+  syncPaymentProofVisibility();
   appointmentTotal.textContent = 'R$ 0,00';
 }
 
@@ -224,6 +230,64 @@ function getPaymentTypeLabel(paymentType) {
 
 function getPaymentStatusLabel(paymentStatus) {
   return paymentStatus === 'ja pago' ? 'Já pago' : 'A pagar';
+}
+
+function getPaymentProof(item) {
+  return {
+    name: item?.payment_proof_name || '',
+    data: item?.payment_proof_data || '',
+  };
+}
+
+function renderPaymentProofLink(item) {
+  const proof = getPaymentProof(item);
+  if (!proof.data) return '-';
+  const label = proof.name || 'Abrir comprovante';
+  return `<a class="proof-link" href="${proof.data}" target="_blank" rel="noopener" download="${escapeHtml(label)}">
+    <i class="ph ph-paperclip"></i> ${escapeHtml(label)}
+  </a>`;
+}
+
+function syncPaymentProofVisibility(currentAppointment = null) {
+  if (!appointmentPaymentStatus || !appointmentPaymentProofGroup) return;
+  const isPaid = appointmentPaymentStatus.value === 'ja pago';
+  appointmentPaymentProofGroup.classList.toggle('hidden', !isPaid);
+
+  if (!isPaid) {
+    if (appointmentPaymentProof) appointmentPaymentProof.value = '';
+    if (appointmentPaymentProofCurrent) appointmentPaymentProofCurrent.textContent = '';
+    return;
+  }
+
+  const proof = getPaymentProof(currentAppointment);
+  if (appointmentPaymentProofCurrent) {
+    appointmentPaymentProofCurrent.textContent = proof.data
+      ? `Comprovante atual: ${proof.name || 'arquivo anexado'}`
+      : 'Envie uma imagem ou PDF de até 2 MB.';
+  }
+}
+
+function readPaymentProofFile() {
+  if (!appointmentPaymentProof?.files?.length) return Promise.resolve(null);
+  const file = appointmentPaymentProof.files[0];
+  const maxBytes = 2 * 1024 * 1024;
+  const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'application/pdf'];
+  if (!allowedTypes.includes(file.type)) {
+    return Promise.reject(new Error('Envie um comprovante em PNG, JPG, WEBP, GIF ou PDF.'));
+  }
+  if (file.size > maxBytes) {
+    return Promise.reject(new Error('O comprovante deve ter até 2 MB.'));
+  }
+
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve({
+      payment_proof_name: file.name,
+      payment_proof_data: reader.result,
+    });
+    reader.onerror = () => reject(new Error('Não foi possível ler o comprovante.'));
+    reader.readAsDataURL(file);
+  });
 }
 
 function normalizeAppointmentDate(value) {
@@ -393,6 +457,7 @@ function renderAppointments() {
       <td>
         ${getPaymentTypeLabel(appointment.payment_type || 'dinheiro')}
         <span class="payment-status">${getPaymentStatusLabel(paymentStatus)}</span>
+        <div class="payment-proof-inline">${renderPaymentProofLink(appointment)}</div>
       </td>
       <td class="actions">
         <div class="action-buttons">
@@ -410,7 +475,7 @@ function renderServiceHistory() {
   const history = getFilteredServiceHistory();
 
   if (!history.length) {
-    historyTable.innerHTML = '<tr><td colspan="6">Nenhum serviço finalizado encontrado.</td></tr>';
+    historyTable.innerHTML = '<tr><td colspan="7">Nenhum serviço finalizado encontrado.</td></tr>';
     return;
   }
 
@@ -426,6 +491,7 @@ function renderServiceHistory() {
       <td>${escapeHtml(servicesText)}</td>
       <td>${formatCurrency(totalPrice)}</td>
       <td>${getPaymentTypeLabel(item.payment_type || 'dinheiro')}</td>
+      <td>${renderPaymentProofLink(item)}</td>
       <td>${formatDateTime(item.completed_at)}</td>
     </tr>`;
   }).join('');
@@ -537,6 +603,10 @@ async function handleLogin(event) {
     const password = document.getElementById('login-password').value.trim();
     
     const data = await apiFetch('/api/auth/login', 'POST', { email, password });
+    if (data.user?.role !== 'user') {
+      window.location.href = 'admin.html';
+      return;
+    }
     state.user = data.user;
     state.tenant = data.tenant;
     
@@ -619,7 +689,7 @@ async function handleAppointmentSubmit(event) {
   const notes = document.getElementById('appointment-notes').value.trim();
   const service_ids = readCheckedServiceIds();
   const payment_type = document.getElementById('appointment-payment-type').value;
-  const payment_status = document.getElementById('appointment-payment-status').value;
+  const payment_status = appointmentPaymentStatus?.value || 'a pagar';
   
   if (!client_id || !appointment_date || !service_ids.length) {
     alert('Por favor, preencha o cliente, a data e selecione pelo menos um serviço.');
@@ -631,9 +701,21 @@ async function handleAppointmentSubmit(event) {
     if (!shouldContinue) return;
   }
 
-  const payload = { client_id, appointment_date, service_ids, payment_type, payment_status, notes };
-
   try {
+    const currentAppointment = id ? state.appointments.find((item) => Number(item.id) === Number(id)) : null;
+    const uploadedProof = payment_status === 'ja pago' ? await readPaymentProofFile() : null;
+    const existingProof = payment_status === 'ja pago' ? getPaymentProof(currentAppointment) : { name: '', data: '' };
+    const payload = {
+      client_id,
+      appointment_date,
+      service_ids,
+      payment_type,
+      payment_status,
+      payment_proof_name: uploadedProof?.payment_proof_name || existingProof.name || '',
+      payment_proof_data: uploadedProof?.payment_proof_data || existingProof.data || '',
+      notes,
+    };
+
     if (id) {
       await apiFetch(`/api/appointments/${id}`, 'PUT', payload);
     } else {
@@ -715,7 +797,7 @@ function openAppointmentForm(appointment = null) {
     
     document.getElementById('appointment-notes').value = appointment.notes || '';
     document.getElementById('appointment-payment-type').value = appointment.payment_type || 'dinheiro';
-    document.getElementById('appointment-payment-status').value = appointment.payment_status || 'a pagar';
+    if (appointmentPaymentStatus) appointmentPaymentStatus.value = appointment.payment_status || 'a pagar';
     
     const apptServiceIds = appointment.services ? appointment.services.map(s => s.service_id || s.id) : [];
     appointmentServices.querySelectorAll('input[type="checkbox"]').forEach((checkbox) => {
@@ -725,9 +807,11 @@ function openAppointmentForm(appointment = null) {
   } else {
     appointmentForm.reset();
     setDefaultAppointmentDateTime();
-    document.getElementById('appointment-payment-status').value = 'a pagar';
+    if (appointmentPaymentStatus) appointmentPaymentStatus.value = 'a pagar';
     state.editing.appointment = null;
   }
+  if (appointmentPaymentProof) appointmentPaymentProof.value = '';
+  syncPaymentProofVisibility(appointment);
   updateTotals();
   appointmentForm.classList.remove('hidden');
 }
@@ -804,6 +888,14 @@ function bindEvents() {
   
   newAppointmentButton.addEventListener('click', () => openAppointmentForm());
   cancelAppointmentButton.addEventListener('click', resetAppointmentForm);
+  if (appointmentPaymentStatus) {
+    appointmentPaymentStatus.addEventListener('change', () => {
+      const currentAppointment = state.editing.appointment
+        ? state.appointments.find((item) => Number(item.id) === Number(state.editing.appointment))
+        : null;
+      syncPaymentProofVisibility(currentAppointment);
+    });
+  }
   
   clientsTable.addEventListener('click', handleTableClick);
   servicesTable.addEventListener('click', handleTableClick);
@@ -1004,6 +1096,10 @@ window.addEventListener('DOMContentLoaded', async () => {
   // Verifica se o usuário já tem uma sessão ativa (cookie)
   try {
     const data = await apiFetch('/api/auth/me');
+    if (data.user?.role !== 'user') {
+      window.location.href = 'admin.html';
+      return;
+    }
     state.user = data.user;
     state.tenant = data.tenant;
     showApp();

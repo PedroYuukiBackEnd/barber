@@ -80,6 +80,7 @@ async function initDatabase() {
   await ensureUserColumns();
   await ensureRecommendationsTable();
   await ensureBugReportsTable();
+  await ensureAppointmentColumns();
   await ensureServiceHistoryTable();
   await seedDefaultSuperadmin();
   console.log('Banco de dados pronto.');
@@ -87,9 +88,11 @@ async function initDatabase() {
 
 async function ensureTenantColumns() {
   const column = await get(
-    `SELECT column_name
+     `SELECT column_name
      FROM information_schema.columns
-     WHERE table_name = 'tenants' AND column_name = 'border_color'`
+     WHERE table_schema = current_schema()
+       AND table_name = 'tenants'
+       AND column_name = 'border_color'`
   );
   if (!column) {
     await run("ALTER TABLE tenants ADD COLUMN border_color TEXT NOT NULL DEFAULT '#3f3f46'");
@@ -99,9 +102,10 @@ async function ensureTenantColumns() {
 
 async function ensureUserColumns() {
   const columns = await db.all(
-    `SELECT column_name AS name
+     `SELECT column_name AS name
      FROM information_schema.columns
-     WHERE table_name = 'users'`
+     WHERE table_schema = current_schema()
+       AND table_name = 'users'`
   );
   const columnNames = columns.map((column) => column.name);
   if (!columnNames.includes('admin_notes')) {
@@ -141,9 +145,10 @@ async function ensureBugReportsTable() {
     );
   `);
   const columns = await db.all(
-    `SELECT column_name AS name
+     `SELECT column_name AS name
      FROM information_schema.columns
-     WHERE table_name = 'bug_reports'`
+     WHERE table_schema = current_schema()
+       AND table_name = 'bug_reports'`
   );
   const columnNames = columns.map((column) => column.name);
   if (!columnNames.includes('resolved_at')) {
@@ -151,6 +156,22 @@ async function ensureBugReportsTable() {
   }
   if (!columnNames.includes('resolution_message')) {
     await run("ALTER TABLE bug_reports ADD COLUMN resolution_message TEXT DEFAULT ''");
+  }
+}
+
+async function ensureAppointmentColumns() {
+  const appointmentColumns = await db.all(
+    `SELECT column_name AS name
+     FROM information_schema.columns
+     WHERE table_schema = current_schema()
+       AND table_name = 'appointments'`
+  );
+  const appointmentColumnNames = appointmentColumns.map((column) => column.name);
+  if (!appointmentColumnNames.includes('payment_proof_name')) {
+    await run("ALTER TABLE appointments ADD COLUMN payment_proof_name TEXT DEFAULT ''");
+  }
+  if (!appointmentColumnNames.includes('payment_proof_data')) {
+    await run("ALTER TABLE appointments ADD COLUMN payment_proof_data TEXT DEFAULT ''");
   }
 }
 
@@ -166,11 +187,26 @@ async function ensureServiceHistoryTable() {
       total NUMERIC(10, 2) NOT NULL DEFAULT 0,
       payment_type TEXT DEFAULT 'dinheiro',
       payment_status TEXT DEFAULT 'ja pago',
+      payment_proof_name TEXT DEFAULT '',
+      payment_proof_data TEXT DEFAULT '',
       notes TEXT DEFAULT '',
       services JSONB NOT NULL DEFAULT '[]'::jsonb,
       completed_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
   `);
+  const historyColumns = await db.all(
+    `SELECT column_name AS name
+     FROM information_schema.columns
+     WHERE table_schema = current_schema()
+       AND table_name = 'service_history'`
+  );
+  const historyColumnNames = historyColumns.map((column) => column.name);
+  if (!historyColumnNames.includes('payment_proof_name')) {
+    await run("ALTER TABLE service_history ADD COLUMN payment_proof_name TEXT DEFAULT ''");
+  }
+  if (!historyColumnNames.includes('payment_proof_data')) {
+    await run("ALTER TABLE service_history ADD COLUMN payment_proof_data TEXT DEFAULT ''");
+  }
 }
 
 if (require.main === module) {

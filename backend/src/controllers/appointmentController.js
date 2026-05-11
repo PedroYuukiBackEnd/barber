@@ -11,6 +11,36 @@ const {
 const { getClientById } = require('../models/clientModel');
 const { listServicesByIds } = require('../models/serviceModel');
 
+const ALLOWED_PAYMENT_PROOF_PREFIXES = [
+  'data:image/jpeg;base64,',
+  'data:image/png;base64,',
+  'data:image/webp;base64,',
+  'data:image/gif;base64,',
+  'data:application/pdf;base64,',
+];
+const MAX_PAYMENT_PROOF_CHARS = 3 * 1024 * 1024;
+
+function normalizePaymentProof(paymentStatus, paymentProofName, paymentProofData) {
+  if (paymentStatus !== 'ja pago') {
+    return { proofName: '', proofData: '' };
+  }
+
+  const proofName = String(paymentProofName || '').trim().slice(0, 120);
+  const proofData = String(paymentProofData || '').trim();
+  if (!proofData) {
+    return { proofName: '', proofData: '' };
+  }
+
+  const hasAllowedPrefix = ALLOWED_PAYMENT_PROOF_PREFIXES.some((prefix) => proofData.startsWith(prefix));
+  if (!hasAllowedPrefix || proofData.length > MAX_PAYMENT_PROOF_CHARS) {
+    const error = new Error('Comprovante inválido. Envie uma imagem PNG/JPG/WEBP/GIF ou PDF de até 2 MB.');
+    error.status = 400;
+    throw error;
+  }
+
+  return { proofName: proofName || 'comprovante', proofData };
+}
+
 async function listAppointmentsHandler(req, res, next) {
   try {
     const appointments = await listAppointments(req.user.tenant_id);
@@ -22,7 +52,7 @@ async function listAppointmentsHandler(req, res, next) {
 
 async function createAppointmentHandler(req, res, next) {
   try {
-    const { client_id, appointment_date, service_ids, payment_type, payment_status, notes } = req.body;
+    const { client_id, appointment_date, service_ids, payment_type, payment_status, payment_proof_name, payment_proof_data, notes } = req.body;
     if (!client_id || !appointment_date || !Array.isArray(service_ids) || service_ids.length === 0) {
       return res.status(400).json({ message: 'Cliente, data e pelo menos um serviço são obrigatórios.' });
     }
@@ -38,7 +68,8 @@ async function createAppointmentHandler(req, res, next) {
     }
 
     const total = services.reduce((sum, service) => sum + Number(service.price), 0);
-    const appointment = await createAppointment(req.user.tenant_id, client_id, appointment_date, total, payment_type || 'dinheiro', payment_status || 'a pagar', notes || '', services);
+    const { proofName, proofData } = normalizePaymentProof(payment_status, payment_proof_name, payment_proof_data);
+    const appointment = await createAppointment(req.user.tenant_id, client_id, appointment_date, total, payment_type || 'dinheiro', payment_status || 'a pagar', proofName, proofData, notes || '', services);
     res.status(201).json({ appointment });
   } catch (error) {
     next(error);
@@ -48,7 +79,7 @@ async function createAppointmentHandler(req, res, next) {
 async function updateAppointmentHandler(req, res, next) {
   try {
     const appointmentId = Number(req.params.id);
-    const { client_id, appointment_date, service_ids, payment_type, payment_status, notes } = req.body;
+    const { client_id, appointment_date, service_ids, payment_type, payment_status, payment_proof_name, payment_proof_data, notes } = req.body;
     if (!client_id || !appointment_date || !Array.isArray(service_ids) || service_ids.length === 0) {
       return res.status(400).json({ message: 'Cliente, data e pelo menos um serviço são obrigatórios.' });
     }
@@ -69,7 +100,8 @@ async function updateAppointmentHandler(req, res, next) {
     }
 
     const total = services.reduce((sum, service) => sum + Number(service.price), 0);
-    const appointment = await updateAppointment(appointmentId, req.user.tenant_id, client_id, appointment_date, total, payment_type || 'dinheiro', payment_status || 'a pagar', notes || '', services);
+    const { proofName, proofData } = normalizePaymentProof(payment_status, payment_proof_name, payment_proof_data);
+    const appointment = await updateAppointment(appointmentId, req.user.tenant_id, client_id, appointment_date, total, payment_type || 'dinheiro', payment_status || 'a pagar', proofName, proofData, notes || '', services);
     res.json({ appointment });
   } catch (error) {
     next(error);

@@ -595,6 +595,31 @@ td.actions button {
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
 }
 
+.field-hint {
+  display: block;
+  margin-top: 8px;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.proof-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--primary-color);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.proof-link:hover {
+  text-decoration: underline;
+}
+
+.payment-proof-inline {
+  margin-top: 8px;
+  font-size: 0.85rem;
+}
+
 .payment-status {
   display: inline-flex;
   align-items: center;

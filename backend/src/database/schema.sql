@@ -47,6 +47,8 @@ CREATE TABLE IF NOT EXISTS appointments (
   total NUMERIC(10, 2) NOT NULL DEFAULT 0,
   payment_type TEXT DEFAULT 'dinheiro',
   payment_status TEXT DEFAULT 'a pagar',
+  payment_proof_name TEXT DEFAULT '',
+  payment_proof_data TEXT DEFAULT '',
   notes TEXT DEFAULT '',
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -91,6 +93,8 @@ CREATE TABLE IF NOT EXISTS service_history (
   total NUMERIC(10, 2) NOT NULL DEFAULT 0,
   payment_type TEXT DEFAULT 'dinheiro',
   payment_status TEXT DEFAULT 'ja pago',
+  payment_proof_name TEXT DEFAULT '',
+  payment_proof_data TEXT DEFAULT '',
   notes TEXT DEFAULT '',
   services JSONB NOT NULL DEFAULT '[]'::jsonb,
   completed_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP

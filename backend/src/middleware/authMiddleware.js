@@ -28,4 +28,13 @@ async function authMiddleware(req, res, next) {
   }
 }
 
-module.exports = { authMiddleware };
+function requireRole(...allowedRoles) {
+  return (req, res, next) => {
+    if (!req.user || !allowedRoles.includes(req.user.role)) {
+      return res.status(403).json({ message: 'Acesso negado para este painel.' });
+    }
+    next();
+  };
+}
+
+module.exports = { authMiddleware, requireRole };

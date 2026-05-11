@@ -1,5 +1,5 @@
 const express = require('express');
-const { authMiddleware } = require('../middleware/authMiddleware');
+const { authMiddleware, requireRole } = require('../middleware/authMiddleware');
 const {
   listClients,
   createClient,
@@ -8,7 +8,7 @@ const {
 } = require('../controllers/clientController');
 
 const router = express.Router();
-router.use(authMiddleware);
+router.use(authMiddleware, requireRole('user'));
 
 router.get('/', listClients);
 router.post('/', createClient);

@@ -30,7 +30,7 @@ app.set('trust proxy', 1);
 app.use(helmet({
   contentSecurityPolicy: false,
 }));
-app.use(express.json({ limit: '100kb' }));
+app.use(express.json({ limit: '5mb' }));
 app.use(cookieParser());
 app.use(cors({ origin: FRONTEND_URL, credentials: true }));
 

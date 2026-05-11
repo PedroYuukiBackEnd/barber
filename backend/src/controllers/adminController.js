@@ -28,7 +28,8 @@ async function ensureBillingColumns() {
   const columns = await allQuery(
     `SELECT column_name AS name
      FROM information_schema.columns
-     WHERE table_name = 'users'`
+     WHERE table_schema = current_schema()
+       AND table_name = 'users'`
   );
   const columnNames = columns.map((column) => column.name);
   if (!columnNames.includes('billing_cycle_started_at')) {
