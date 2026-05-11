@@ -29,7 +29,7 @@ async function register(req, res, next) {
 
     const { email, password, name, tenantName } = req.body;
     if (!email || !password || !name || !tenantName) {
-      return res.status(400).json({ message: 'Preencha nome, email, senha e nome da barbearia.' });
+      return res.status(400).json({ message: 'Preencha nome da barbearia, nome completo, email e senha.' });
     }
 
     const existingUser = await getUserByEmail(email);

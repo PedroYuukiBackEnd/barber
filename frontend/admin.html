@@ -210,6 +210,13 @@
                 </div>
               </div>
               <div class="input-group">
+                <label for="register-owner-name">Nome completo do cliente/cabeleireiro</label>
+                <div class="input-with-icon">
+                  <i class="ph ph-user"></i>
+                  <input id="register-owner-name" type="text" required placeholder="Ex: João da Silva" />
+                </div>
+              </div>
+              <div class="input-group">
                 <label for="register-email">Acesso</label>
                 <div class="input-with-icon">
                   <i class="ph ph-envelope"></i>
@@ -611,13 +618,18 @@
       registerMessage.textContent = 'Criando barbearia...';
       try {
         const tenantName = document.getElementById('register-name').value.trim();
+        const name = document.getElementById('register-owner-name').value.trim();
         const email = document.getElementById('register-email').value.trim();
         const password = document.getElementById('register-password').value.trim();
+        if (!tenantName || !name || !email || !password) {
+          registerMessage.textContent = 'Preencha nome da barbearia, nome completo, acesso e senha.';
+          return;
+        }
         const response = await fetch('/api/admin/register', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
-          body: JSON.stringify({ email, password, name: tenantName, tenantName })
+          body: JSON.stringify({ email, password, name, tenantName })
         });
         const data = await response.json();
         if (response.ok) {

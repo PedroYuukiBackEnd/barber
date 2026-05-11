@@ -160,7 +160,7 @@ async function registerTenant(req, res, next) {
   try {
     const { email, password, name, tenantName } = req.body;
     if (!email || !password || !name || !tenantName) {
-      return res.status(400).json({ message: 'Preencha nome, email, senha e nome da barbearia.' });
+      return res.status(400).json({ message: 'Preencha nome da barbearia, nome completo, email e senha.' });
     }
     if (await findUserByEmail(email)) {
       return res.status(400).json({ message: 'Email ja cadastrado.' });

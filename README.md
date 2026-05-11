@@ -45,6 +45,12 @@ Start Command: npm start
 
 Depois do primeiro deploy, entre em `/admin.html` com o `DEFAULT_SUPERADMIN_EMAIL` e `DEFAULT_SUPERADMIN_PASSWORD`, crie as barbearias dos clientes pelo painel e entregue o acesso de cada uma.
 
+Ao cadastrar uma barbearia, informe:
+
+- Nome da barbearia: nome que aparecera no sistema do cliente.
+- Nome completo do cliente/cabeleireiro: nome do usuario dono da barbearia.
+- Acesso e senha: credenciais que o cliente usara para entrar.
+
 ## Desenvolvimento local
 
 ```bash
