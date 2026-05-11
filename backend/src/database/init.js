@@ -76,6 +76,7 @@ async function initDatabase() {
   const schema = fs.readFileSync(schemaPath, 'utf8');
   await exec(schema);
   await ensureTenantColumns();
+  await ensureRecommendationsTable();
   await seedDefaultSuperadmin();
   console.log('Banco de dados pronto.');
 }
@@ -89,6 +90,20 @@ async function ensureTenantColumns() {
   if (!column) {
     await run("ALTER TABLE tenants ADD COLUMN border_color TEXT NOT NULL DEFAULT '#3f3f46'");
   }
+}
+
+async function ensureRecommendationsTable() {
+  await exec(`
+    CREATE TABLE IF NOT EXISTS recommendations (
+      id SERIAL PRIMARY KEY,
+      tenant_id INTEGER NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      client_name TEXT NOT NULL,
+      barbershop_name TEXT NOT NULL,
+      recommendation TEXT NOT NULL,
+      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
 }
 
 if (require.main === module) {

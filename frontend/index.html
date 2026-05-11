@@ -404,6 +404,28 @@
 
             <p class="message" id="settings-message"></p>
           </form>
+
+          <form id="recommendation-form" class="form-card glass-panel">
+            <h3 class="form-title">Recomendações</h3>
+            <div class="form-grid">
+              <div class="input-group">
+                <label for="recommendation-client-name">Nome do Cliente</label>
+                <input id="recommendation-client-name" type="text" required placeholder="Seu nome completo" />
+              </div>
+              <div class="input-group">
+                <label for="recommendation-barbershop-name">Nome da Barbearia</label>
+                <input id="recommendation-barbershop-name" type="text" required placeholder="Nome da barbearia" />
+              </div>
+              <div class="input-group full-width">
+                <label for="recommendation-text">Qual recomendação deseja fazer?</label>
+                <textarea id="recommendation-text" required placeholder="Suas recomendações são sempre bem-vindas!"></textarea>
+              </div>
+            </div>
+            <div class="form-actions">
+              <button class="button-primary" type="submit">Enviar Recomendação <i class="ph ph-paper-plane-right"></i></button>
+            </div>
+            <p class="message" id="recommendation-message"></p>
+          </form>
         </section>
 
       </div>

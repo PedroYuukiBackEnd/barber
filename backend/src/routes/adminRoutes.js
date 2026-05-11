@@ -1,6 +1,6 @@
 const express = require('express');
 const { authMiddleware } = require('../middleware/authMiddleware');
-const { getUsers, registerTenant, editUser, deleteUser, createPlatformAdmin, markUserBillingPaid } = require('../controllers/adminController');
+const { getUsers, getRecommendations, registerTenant, editUser, deleteUser, createPlatformAdmin, markUserBillingPaid } = require('../controllers/adminController');
 
 const router = express.Router();
 
@@ -14,6 +14,7 @@ function superadminOnly(req, res, next) {
 router.use(authMiddleware, superadminOnly);
 
 router.get('/users', getUsers);
+router.get('/recommendations', getRecommendations);
 router.post('/register', registerTenant);
 router.post('/users/admin', createPlatformAdmin);
 router.patch('/users/:id/billing', markUserBillingPaid);

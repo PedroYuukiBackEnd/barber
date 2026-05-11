@@ -77,6 +77,23 @@ async function getUsers(req, res, next) {
   }
 }
 
+async function getRecommendations(req, res, next) {
+  try {
+    const recommendations = await allQuery(
+      `SELECT r.id, r.client_name, r.barbershop_name, r.recommendation, r.created_at,
+              u.name AS user_name, t.name AS tenant_name
+       FROM recommendations r
+       JOIN users u ON u.id = r.user_id
+       JOIN tenants t ON t.id = r.tenant_id
+       ORDER BY r.created_at DESC`
+    );
+
+    res.json({ recommendations });
+  } catch (error) {
+    next(error);
+  }
+}
+
 async function markUserBillingPaid(req, res, next) {
   try {
     await ensureBillingColumns();
@@ -202,4 +219,4 @@ async function editUser(req, res, next) {
   }
 }
 
-module.exports = { getUsers, registerTenant, editUser, deleteUser, createPlatformAdmin, markUserBillingPaid };
+module.exports = { getUsers, getRecommendations, registerTenant, editUser, deleteUser, createPlatformAdmin, markUserBillingPaid };

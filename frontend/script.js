@@ -92,6 +92,11 @@ const settingsMessage = document.getElementById('settings-message');
 const tenantNameInput = document.getElementById('tenant-name-input');
 const primaryColorInput = document.getElementById('primary-color-input');
 const borderColorInput = document.getElementById('border-color-input');
+const recommendationForm = document.getElementById('recommendation-form');
+const recommendationMessage = document.getElementById('recommendation-message');
+const recommendationClientName = document.getElementById('recommendation-client-name');
+const recommendationBarbershopName = document.getElementById('recommendation-barbershop-name');
+const recommendationText = document.getElementById('recommendation-text');
 
 
 // --- Layout & Navigation ---
@@ -683,6 +688,8 @@ async function loadTenantAppearanceSettings() {
 
     if (primaryColorInput && settings.theme_color) primaryColorInput.value = settings.theme_color;
     if (borderColorInput && settings.border_color) borderColorInput.value = settings.border_color;
+    if (recommendationBarbershopName && settings.name) recommendationBarbershopName.value = settings.name;
+    if (recommendationClientName && state.user?.name) recommendationClientName.value = state.user.name;
   } catch (error) {
     // silencioso - sem backend ainda
   }
@@ -729,9 +736,42 @@ function bindSettingsEvents() {
   });
 }
 
+function bindRecommendationEvents() {
+  if (!recommendationForm) return;
+
+  recommendationForm.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    if (recommendationMessage) recommendationMessage.textContent = 'Enviando recomendação...';
+
+    const payload = {
+      client_name: recommendationClientName?.value?.trim(),
+      barbershop_name: recommendationBarbershopName?.value?.trim(),
+      recommendation: recommendationText?.value?.trim(),
+    };
+
+    if (!payload.client_name || !payload.barbershop_name || !payload.recommendation) {
+      if (recommendationMessage) recommendationMessage.textContent = 'Preencha nome, barbearia e recomendação.';
+      return;
+    }
+
+    try {
+      const data = await apiFetch('/api/recommendations', 'POST', payload);
+      if (data?.recommendation) {
+        recommendationForm.reset();
+        if (recommendationClientName && state.user?.name) recommendationClientName.value = state.user.name;
+        if (recommendationBarbershopName && state.tenant?.name) recommendationBarbershopName.value = state.tenant.name;
+        if (recommendationMessage) recommendationMessage.textContent = 'Recomendação enviada com sucesso. Obrigado!';
+      }
+    } catch (error) {
+      if (recommendationMessage) recommendationMessage.textContent = error.message;
+    }
+  });
+}
+
 window.addEventListener('DOMContentLoaded', async () => {
   bindEvents();
   bindSettingsEvents();
+  bindRecommendationEvents();
   
   // Verifica se o usuário já tem uma sessão ativa (cookie)
   try {

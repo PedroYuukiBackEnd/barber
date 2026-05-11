@@ -56,3 +56,13 @@ CREATE TABLE IF NOT EXISTS appointment_services (
   service_name TEXT NOT NULL,
   service_price NUMERIC(10, 2) NOT NULL DEFAULT 0
 );
+
+CREATE TABLE IF NOT EXISTS recommendations (
+  id SERIAL PRIMARY KEY,
+  tenant_id INTEGER NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  client_name TEXT NOT NULL,
+  barbershop_name TEXT NOT NULL,
+  recommendation TEXT NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
