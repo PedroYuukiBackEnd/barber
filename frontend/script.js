@@ -84,6 +84,8 @@ const appointmentPaymentStatus = document.getElementById('appointment-payment-st
 const appointmentPaymentProofGroup = document.getElementById('appointment-payment-proof-group');
 const appointmentPaymentProof = document.getElementById('appointment-payment-proof');
 const appointmentPaymentProofCurrent = document.getElementById('appointment-payment-proof-current');
+const appointmentNoteAttachment = document.getElementById('appointment-note-attachment');
+const appointmentNoteAttachmentCurrent = document.getElementById('appointment-note-attachment-current');
 const historyFilterClient = document.getElementById('history-filter-client');
 const historyFilterDate = document.getElementById('history-filter-date');
 const historyFilterTime = document.getElementById('history-filter-time');
@@ -118,6 +120,8 @@ const recommendationMessage = document.getElementById('recommendation-message');
 const recommendationClientName = document.getElementById('recommendation-client-name');
 const recommendationBarbershopName = document.getElementById('recommendation-barbershop-name');
 const recommendationText = document.getElementById('recommendation-text');
+const recommendationAttachment = document.getElementById('recommendation-attachment');
+const bugAttachment = document.getElementById('bug-attachment');
 
 const DEFAULT_PRIMARY_COLOR = '#d4d4d8';
 const LEGACY_DEFAULT_PRIMARY_COLOR = '#1a73e8';
@@ -202,6 +206,8 @@ function resetAppointmentForm() {
   setDefaultAppointmentDateTime();
   if (appointmentPaymentStatus) appointmentPaymentStatus.value = 'a pagar';
   syncPaymentProofVisibility();
+  if (appointmentNoteAttachment) appointmentNoteAttachment.value = '';
+  if (appointmentNoteAttachmentCurrent) appointmentNoteAttachmentCurrent.textContent = 'Imagem ou PDF de até 2 MB.';
   appointmentTotal.textContent = 'R$ 0,00';
 }
 
@@ -239,13 +245,27 @@ function getPaymentProof(item) {
   };
 }
 
-function renderPaymentProofLink(item) {
-  const proof = getPaymentProof(item);
-  if (!proof.data) return '-';
-  const label = proof.name || 'Abrir comprovante';
-  return `<a class="proof-link" href="${proof.data}" target="_blank" rel="noopener" download="${escapeHtml(label)}">
+function getNoteAttachment(item) {
+  return {
+    name: item?.note_attachment_name || '',
+    data: item?.note_attachment_data || '',
+  };
+}
+
+function renderAttachmentLink(attachment, fallbackLabel = 'Abrir anexo') {
+  if (!attachment?.data) return '-';
+  const label = attachment.name || fallbackLabel;
+  return `<a class="proof-link" href="${attachment.data}" target="_blank" rel="noopener" download="${escapeHtml(label)}">
     <i class="ph ph-paperclip"></i> ${escapeHtml(label)}
   </a>`;
+}
+
+function renderPaymentProofLink(item) {
+  return renderAttachmentLink(getPaymentProof(item), 'Abrir comprovante');
+}
+
+function renderNoteAttachmentLink(item) {
+  return renderAttachmentLink(getNoteAttachment(item), 'Abrir anexo');
 }
 
 function syncPaymentProofVisibility(currentAppointment = null) {
@@ -267,25 +287,25 @@ function syncPaymentProofVisibility(currentAppointment = null) {
   }
 }
 
-function readPaymentProofFile() {
-  if (!appointmentPaymentProof?.files?.length) return Promise.resolve(null);
-  const file = appointmentPaymentProof.files[0];
+function readAttachmentFile(input) {
+  if (!input?.files?.length) return Promise.resolve(null);
+  const file = input.files[0];
   const maxBytes = 2 * 1024 * 1024;
   const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'application/pdf'];
   if (!allowedTypes.includes(file.type)) {
-    return Promise.reject(new Error('Envie um comprovante em PNG, JPG, WEBP, GIF ou PDF.'));
+    return Promise.reject(new Error('Envie um arquivo em PNG, JPG, WEBP, GIF ou PDF.'));
   }
   if (file.size > maxBytes) {
-    return Promise.reject(new Error('O comprovante deve ter até 2 MB.'));
+    return Promise.reject(new Error('O arquivo deve ter até 2 MB.'));
   }
 
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve({
-      payment_proof_name: file.name,
-      payment_proof_data: reader.result,
+      attachment_name: file.name,
+      attachment_data: reader.result,
     });
-    reader.onerror = () => reject(new Error('Não foi possível ler o comprovante.'));
+    reader.onerror = () => reject(new Error('Não foi possível ler o arquivo.'));
     reader.readAsDataURL(file);
   });
 }
@@ -396,6 +416,13 @@ function hasAppointmentScheduleConflict(appointmentDate, currentAppointmentId = 
   });
 }
 
+function hasClientAppointmentConflict(clientId, currentAppointmentId = null) {
+  return state.appointments.some((appointment) => {
+    if (currentAppointmentId && Number(appointment.id) === Number(currentAppointmentId)) return false;
+    return Number(appointment.client_id) === Number(clientId);
+  });
+}
+
 function updateTotals() {
   const checked = appointmentServices.querySelectorAll('input[type="checkbox"]:checked');
   const total = Array.from(checked).reduce((sum, checkbox) => sum + Number(checkbox.dataset.price), 0);
@@ -452,7 +479,10 @@ function renderAppointments() {
     <tr>
       <td>${escapeHtml(clientName)}</td>
       <td>${formatDateTime(appointment.appointment_date)}</td>
-      <td>${escapeHtml(servicesText)}</td>
+      <td>
+        ${escapeHtml(servicesText)}
+        <div class="payment-proof-inline">${renderNoteAttachmentLink(appointment)}</div>
+      </td>
       <td>${formatCurrency(totalPrice)}</td>
       <td>
         ${getPaymentTypeLabel(appointment.payment_type || 'dinheiro')}
@@ -488,7 +518,10 @@ function renderServiceHistory() {
     <tr>
       <td>${escapeHtml(item.client_name)}</td>
       <td>${formatDateTime(item.appointment_date)}</td>
-      <td>${escapeHtml(servicesText)}</td>
+      <td>
+        ${escapeHtml(servicesText)}
+        <div class="payment-proof-inline">${renderNoteAttachmentLink(item)}</div>
+      </td>
       <td>${formatCurrency(totalPrice)}</td>
       <td>${getPaymentTypeLabel(item.payment_type || 'dinheiro')}</td>
       <td>${renderPaymentProofLink(item)}</td>
@@ -506,7 +539,10 @@ function renderBugReports() {
 
   bugReportsTable.innerHTML = state.bugReports.map((report) => `
     <tr>
-      <td>${escapeHtml(report.description)}</td>
+      <td>
+        ${escapeHtml(report.description)}
+        <div class="payment-proof-inline">${renderAttachmentLink({ name: report.attachment_name, data: report.attachment_data })}</div>
+      </td>
       <td>${report.resolved_at ? 'Resolvido' : 'Em analise'}</td>
       <td>${escapeHtml(report.resolution_message || '-')}</td>
     </tr>
@@ -701,18 +737,27 @@ async function handleAppointmentSubmit(event) {
     if (!shouldContinue) return;
   }
 
+  if (hasClientAppointmentConflict(client_id, id)) {
+    const shouldContinue = confirm('Esse cliente já possui um agendamento em aberto. Deseja agendar outra vez?');
+    if (!shouldContinue) return;
+  }
+
   try {
     const currentAppointment = id ? state.appointments.find((item) => Number(item.id) === Number(id)) : null;
-    const uploadedProof = payment_status === 'ja pago' ? await readPaymentProofFile() : null;
+    const uploadedProof = payment_status === 'ja pago' ? await readAttachmentFile(appointmentPaymentProof) : null;
     const existingProof = payment_status === 'ja pago' ? getPaymentProof(currentAppointment) : { name: '', data: '' };
+    const uploadedNoteAttachment = await readAttachmentFile(appointmentNoteAttachment);
+    const existingNoteAttachment = getNoteAttachment(currentAppointment);
     const payload = {
       client_id,
       appointment_date,
       service_ids,
       payment_type,
       payment_status,
-      payment_proof_name: uploadedProof?.payment_proof_name || existingProof.name || '',
-      payment_proof_data: uploadedProof?.payment_proof_data || existingProof.data || '',
+      payment_proof_name: uploadedProof?.attachment_name || existingProof.name || '',
+      payment_proof_data: uploadedProof?.attachment_data || existingProof.data || '',
+      note_attachment_name: uploadedNoteAttachment?.attachment_name || existingNoteAttachment.name || '',
+      note_attachment_data: uploadedNoteAttachment?.attachment_data || existingNoteAttachment.data || '',
       notes,
     };
 
@@ -741,10 +786,13 @@ async function handleBugSubmit(event) {
   }
 
   try {
+    const uploadedAttachment = await readAttachmentFile(bugAttachment);
     const data = await apiFetch('/api/bug-reports', 'POST', {
       client_name: clientName,
       barbershop_name: barbershopName,
       description,
+      attachment_name: uploadedAttachment?.attachment_name || '',
+      attachment_data: uploadedAttachment?.attachment_data || '',
     });
 
     if (data?.bugReport) {
@@ -796,6 +844,12 @@ function openAppointmentForm(appointment = null) {
     document.getElementById('appointment-date').value = normalizeAppointmentDate(appointment.appointment_date);
     
     document.getElementById('appointment-notes').value = appointment.notes || '';
+    if (appointmentNoteAttachmentCurrent) {
+      const noteAttachment = getNoteAttachment(appointment);
+      appointmentNoteAttachmentCurrent.textContent = noteAttachment.data
+        ? `Anexo atual: ${noteAttachment.name || 'arquivo anexado'}`
+        : 'Imagem ou PDF de até 2 MB.';
+    }
     document.getElementById('appointment-payment-type').value = appointment.payment_type || 'dinheiro';
     if (appointmentPaymentStatus) appointmentPaymentStatus.value = appointment.payment_status || 'a pagar';
     
@@ -811,6 +865,8 @@ function openAppointmentForm(appointment = null) {
     state.editing.appointment = null;
   }
   if (appointmentPaymentProof) appointmentPaymentProof.value = '';
+  if (appointmentNoteAttachment) appointmentNoteAttachment.value = '';
+  if (!appointment && appointmentNoteAttachmentCurrent) appointmentNoteAttachmentCurrent.textContent = 'Imagem ou PDF de até 2 MB.';
   syncPaymentProofVisibility(appointment);
   updateTotals();
   appointmentForm.classList.remove('hidden');
@@ -858,6 +914,8 @@ async function handleTableClick(event) {
     if (action === 'finish-appointment') {
       if (confirm('Marcar este trabalho como finalizado? O agendamento será removido da lista.')) {
         await apiFetch(`/api/appointments/${id}/finish`, 'POST');
+        state.appointments = state.appointments.filter((appointment) => Number(appointment.id) !== Number(id));
+        renderAppointments();
         await loadAppData();
       }
     }
@@ -1075,7 +1133,12 @@ function bindRecommendationEvents() {
     }
 
     try {
-      const data = await apiFetch('/api/recommendations', 'POST', payload);
+      const uploadedAttachment = await readAttachmentFile(recommendationAttachment);
+      const data = await apiFetch('/api/recommendations', 'POST', {
+        ...payload,
+        attachment_name: uploadedAttachment?.attachment_name || '',
+        attachment_data: uploadedAttachment?.attachment_data || '',
+      });
       if (data?.recommendation) {
         recommendationForm.reset();
         if (recommendationClientName && state.user?.name) recommendationClientName.value = state.user.name;

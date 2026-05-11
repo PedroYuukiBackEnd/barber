@@ -49,6 +49,8 @@ CREATE TABLE IF NOT EXISTS appointments (
   payment_status TEXT DEFAULT 'a pagar',
   payment_proof_name TEXT DEFAULT '',
   payment_proof_data TEXT DEFAULT '',
+  note_attachment_name TEXT DEFAULT '',
+  note_attachment_data TEXT DEFAULT '',
   notes TEXT DEFAULT '',
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -68,6 +70,8 @@ CREATE TABLE IF NOT EXISTS recommendations (
   client_name TEXT NOT NULL,
   barbershop_name TEXT NOT NULL,
   recommendation TEXT NOT NULL,
+  attachment_name TEXT DEFAULT '',
+  attachment_data TEXT DEFAULT '',
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -78,6 +82,8 @@ CREATE TABLE IF NOT EXISTS bug_reports (
   client_name TEXT NOT NULL,
   barbershop_name TEXT NOT NULL,
   description TEXT NOT NULL,
+  attachment_name TEXT DEFAULT '',
+  attachment_data TEXT DEFAULT '',
   resolved_at TIMESTAMP DEFAULT NULL,
   resolution_message TEXT DEFAULT '',
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -95,6 +101,8 @@ CREATE TABLE IF NOT EXISTS service_history (
   payment_status TEXT DEFAULT 'ja pago',
   payment_proof_name TEXT DEFAULT '',
   payment_proof_data TEXT DEFAULT '',
+  note_attachment_name TEXT DEFAULT '',
+  note_attachment_data TEXT DEFAULT '',
   notes TEXT DEFAULT '',
   services JSONB NOT NULL DEFAULT '[]'::jsonb,
   completed_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP

@@ -282,6 +282,11 @@
                 <label>Notas Adicionais</label>
                 <textarea id="appointment-notes" placeholder="Alguma observação para este agendamento?"></textarea>
               </div>
+              <div class="input-group full-width">
+                <label>Anexo das Notas</label>
+                <input id="appointment-note-attachment" type="file" accept=".jpg,.jpeg,.png,.webp,.gif,.pdf,image/jpeg,image/png,image/webp,image/gif,application/pdf" />
+                <span class="field-hint" id="appointment-note-attachment-current">Imagem ou PDF de até 2 MB.</span>
+              </div>
             </div>
             
             <div class="form-summary">
@@ -445,6 +450,11 @@
                 <label>Descreva o problema ocorrido</label>
                 <textarea id="bug-description" required placeholder="Detalhe o bug ou problema encontrado..."></textarea>
               </div>
+              <div class="input-group full-width">
+                <label>Anexar arquivo ou foto</label>
+                <input id="bug-attachment" type="file" accept=".jpg,.jpeg,.png,.webp,.gif,.pdf,image/jpeg,image/png,image/webp,image/gif,application/pdf" />
+                <span class="field-hint">Imagem ou PDF de até 2 MB.</span>
+              </div>
             </div>
             <div class="form-actions">
               <button class="button-primary" type="submit">Enviar Relato <i class="ph ph-paper-plane-right"></i></button>
@@ -520,6 +530,11 @@
               <div class="input-group full-width">
                 <label for="recommendation-text">Qual recomendação deseja fazer?</label>
                 <textarea id="recommendation-text" required placeholder="Suas recomendações são sempre bem-vindas!"></textarea>
+              </div>
+              <div class="input-group full-width">
+                <label for="recommendation-attachment">Anexar arquivo ou foto</label>
+                <input id="recommendation-attachment" type="file" accept=".jpg,.jpeg,.png,.webp,.gif,.pdf,image/jpeg,image/png,image/webp,image/gif,application/pdf" />
+                <span class="field-hint">Imagem ou PDF de até 2 MB.</span>
               </div>
             </div>
             <div class="form-actions">

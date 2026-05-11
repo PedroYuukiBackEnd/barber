@@ -620,6 +620,82 @@ td.actions button {
   font-size: 0.85rem;
 }
 
+.notification-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  margin-left: 6px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--danger-color);
+  color: #fff;
+  font-size: 0.78rem;
+}
+
+.admin-popup {
+  position: fixed;
+  top: 76px;
+  right: 24px;
+  z-index: 50;
+  width: min(360px, calc(100vw - 32px));
+  max-height: 70vh;
+  padding: 16px;
+  overflow: auto;
+  border-radius: 24px;
+}
+
+.admin-popup-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.admin-popup-header h3 {
+  margin: 0;
+}
+
+.admin-popup-list {
+  display: grid;
+  gap: 10px;
+}
+
+.admin-popup-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: var(--surface-color);
+  color: var(--text-color);
+  text-align: left;
+}
+
+.admin-popup-item i {
+  color: var(--primary-color);
+  font-size: 1.2rem;
+}
+
+.admin-popup-item span,
+.admin-popup-item small {
+  display: block;
+}
+
+.admin-popup-item small {
+  margin-top: 4px;
+  color: var(--text-secondary);
+}
+
+.admin-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
 .payment-status {
   display: inline-flex;
   align-items: center;

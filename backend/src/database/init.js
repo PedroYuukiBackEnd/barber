@@ -125,9 +125,24 @@ async function ensureRecommendationsTable() {
       client_name TEXT NOT NULL,
       barbershop_name TEXT NOT NULL,
       recommendation TEXT NOT NULL,
+      attachment_name TEXT DEFAULT '',
+      attachment_data TEXT DEFAULT '',
       created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
   `);
+  const columns = await db.all(
+    `SELECT column_name AS name
+     FROM information_schema.columns
+     WHERE table_schema = current_schema()
+       AND table_name = 'recommendations'`
+  );
+  const columnNames = columns.map((column) => column.name);
+  if (!columnNames.includes('attachment_name')) {
+    await run("ALTER TABLE recommendations ADD COLUMN attachment_name TEXT DEFAULT ''");
+  }
+  if (!columnNames.includes('attachment_data')) {
+    await run("ALTER TABLE recommendations ADD COLUMN attachment_data TEXT DEFAULT ''");
+  }
 }
 
 async function ensureBugReportsTable() {
@@ -139,6 +154,8 @@ async function ensureBugReportsTable() {
       client_name TEXT NOT NULL,
       barbershop_name TEXT NOT NULL,
       description TEXT NOT NULL,
+      attachment_name TEXT DEFAULT '',
+      attachment_data TEXT DEFAULT '',
       resolved_at TIMESTAMP DEFAULT NULL,
       resolution_message TEXT DEFAULT '',
       created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -157,6 +174,12 @@ async function ensureBugReportsTable() {
   if (!columnNames.includes('resolution_message')) {
     await run("ALTER TABLE bug_reports ADD COLUMN resolution_message TEXT DEFAULT ''");
   }
+  if (!columnNames.includes('attachment_name')) {
+    await run("ALTER TABLE bug_reports ADD COLUMN attachment_name TEXT DEFAULT ''");
+  }
+  if (!columnNames.includes('attachment_data')) {
+    await run("ALTER TABLE bug_reports ADD COLUMN attachment_data TEXT DEFAULT ''");
+  }
 }
 
 async function ensureAppointmentColumns() {
@@ -172,6 +195,12 @@ async function ensureAppointmentColumns() {
   }
   if (!appointmentColumnNames.includes('payment_proof_data')) {
     await run("ALTER TABLE appointments ADD COLUMN payment_proof_data TEXT DEFAULT ''");
+  }
+  if (!appointmentColumnNames.includes('note_attachment_name')) {
+    await run("ALTER TABLE appointments ADD COLUMN note_attachment_name TEXT DEFAULT ''");
+  }
+  if (!appointmentColumnNames.includes('note_attachment_data')) {
+    await run("ALTER TABLE appointments ADD COLUMN note_attachment_data TEXT DEFAULT ''");
   }
 }
 
@@ -189,6 +218,8 @@ async function ensureServiceHistoryTable() {
       payment_status TEXT DEFAULT 'ja pago',
       payment_proof_name TEXT DEFAULT '',
       payment_proof_data TEXT DEFAULT '',
+      note_attachment_name TEXT DEFAULT '',
+      note_attachment_data TEXT DEFAULT '',
       notes TEXT DEFAULT '',
       services JSONB NOT NULL DEFAULT '[]'::jsonb,
       completed_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -206,6 +237,12 @@ async function ensureServiceHistoryTable() {
   }
   if (!historyColumnNames.includes('payment_proof_data')) {
     await run("ALTER TABLE service_history ADD COLUMN payment_proof_data TEXT DEFAULT ''");
+  }
+  if (!historyColumnNames.includes('note_attachment_name')) {
+    await run("ALTER TABLE service_history ADD COLUMN note_attachment_name TEXT DEFAULT ''");
+  }
+  if (!historyColumnNames.includes('note_attachment_data')) {
+    await run("ALTER TABLE service_history ADD COLUMN note_attachment_data TEXT DEFAULT ''");
   }
 }
 

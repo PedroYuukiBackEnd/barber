@@ -3,7 +3,7 @@ const bcrypt = require('bcrypt');
 const { createTenant } = require('../models/tenantModel');
 const { createUser, updateUser } = require('../models/userModel');
 
-const ALLOWED_ROLES = ['superadmin', 'admin', 'user'];
+const ALLOWED_ROLES = ['superadmin', 'user'];
 const ALLOWED_BILLING_TYPES = ['subscription', 'full_payment'];
 
 function runQuery(query, params = []) {
@@ -103,7 +103,8 @@ async function getUsers(req, res, next) {
 async function getRecommendations(req, res, next) {
   try {
     const recommendations = await allQuery(
-      `SELECT r.id, r.client_name, r.barbershop_name, r.recommendation, r.created_at,
+      `SELECT r.id, r.client_name, r.barbershop_name, r.recommendation,
+              r.attachment_name, r.attachment_data, r.created_at,
               u.name AS user_name, t.name AS tenant_name
        FROM recommendations r
        JOIN users u ON u.id = r.user_id
@@ -131,6 +132,7 @@ async function getBugReports(req, res, next) {
   try {
     const reports = await allQuery(
       `SELECT b.id, b.client_name, b.barbershop_name, b.description,
+              b.attachment_name, b.attachment_data,
               b.resolved_at, b.resolution_message, b.created_at,
               u.name AS user_name, t.name AS tenant_name
        FROM bug_reports b
@@ -150,7 +152,8 @@ async function resolveBugReport(req, res, next) {
   try {
     const { id } = req.params;
     const reports = await allQuery(
-      `SELECT b.id, b.client_name, b.barbershop_name, b.description, b.created_at,
+      `SELECT b.id, b.client_name, b.barbershop_name, b.description,
+              b.attachment_name, b.attachment_data, b.created_at,
               u.name AS user_name, t.name AS tenant_name
        FROM bug_reports b
        JOIN users u ON u.id = b.user_id
@@ -288,7 +291,7 @@ async function registerTenant(req, res, next) {
 async function editUser(req, res, next) {
   try {
     const { id } = req.params;
-    const { name, email, role, billingType, adminNotes, password } = req.body;
+    const { name, email, role, billingType, adminNotes, password, billingDays } = req.body;
     if (!name || !email || !role) {
       return res.status(400).json({ message: 'Nome, acesso e role sao obrigatorios.' });
     }
@@ -308,6 +311,10 @@ async function editUser(req, res, next) {
     }
 
     const updated = await updateUser(id, name, email, role, billingType || 'subscription', adminNotes || '', passwordHash);
+    if (billingDays !== undefined && role !== 'superadmin') {
+      const days = Math.max(0, Math.floor(Number(billingDays) || 0));
+      await runQuery("UPDATE users SET billing_cycle_started_at = CURRENT_TIMESTAMP - (?::int * INTERVAL '1 day'), billing_paid_at = NULL WHERE id = ?", [days, id]);
+    }
     res.json({ user: updated });
   } catch (error) {
     next(error);
