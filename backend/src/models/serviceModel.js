@@ -15,15 +15,12 @@ function listServices(tenantId) {
 
 function createService(tenantId, name, price, description) {
   return new Promise((resolve, reject) => {
-    db.run(
-      'INSERT INTO services (tenant_id, name, price, description) VALUES (?, ?, ?, ?)',
+    db.get(
+      'INSERT INTO services (tenant_id, name, price, description) VALUES (?, ?, ?, ?) RETURNING id, name, price, description, created_at',
       [tenantId, name, price, description],
-      function (err) {
+      (err, row) => {
         if (err) return reject(err);
-        db.get('SELECT id, name, price, description, created_at FROM services WHERE id = ?', [this.lastID], (err, row) => {
-          if (err) reject(err);
-          else resolve(row);
-        });
+        resolve(row);
       }
     );
   });

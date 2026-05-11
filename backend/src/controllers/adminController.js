@@ -22,14 +22,18 @@ function allQuery(query, params = []) {
 }
 
 async function ensureBillingColumns() {
-  const columns = await allQuery('PRAGMA table_info(users)');
+  const columns = await allQuery(
+    `SELECT column_name AS name
+     FROM information_schema.columns
+     WHERE table_name = 'users'`
+  );
   const columnNames = columns.map((column) => column.name);
   if (!columnNames.includes('billing_cycle_started_at')) {
-    await runQuery('ALTER TABLE users ADD COLUMN billing_cycle_started_at DATETIME');
+    await runQuery('ALTER TABLE users ADD COLUMN billing_cycle_started_at TIMESTAMP');
     await runQuery('UPDATE users SET billing_cycle_started_at = COALESCE(created_at, CURRENT_TIMESTAMP) WHERE billing_cycle_started_at IS NULL');
   }
   if (!columnNames.includes('billing_paid_at')) {
-    await runQuery('ALTER TABLE users ADD COLUMN billing_paid_at DATETIME DEFAULT NULL');
+    await runQuery('ALTER TABLE users ADD COLUMN billing_paid_at TIMESTAMP DEFAULT NULL');
   }
 }
 

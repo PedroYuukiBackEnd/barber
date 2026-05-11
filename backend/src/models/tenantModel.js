@@ -2,15 +2,12 @@ const db = require('../config/db');
 
 function createTenant(name) {
   return new Promise((resolve, reject) => {
-    db.run(
-      'INSERT INTO tenants (name) VALUES (?)',
+    db.get(
+      'INSERT INTO tenants (name) VALUES (?) RETURNING id, name, theme_color, logo_url',
       [name],
-      function (err) {
+      (err, row) => {
         if (err) return reject(err);
-        db.get('SELECT id, name, theme_color, logo_url FROM tenants WHERE id = ?', [this.lastID], (err, row) => {
-          if (err) reject(err);
-          else resolve(row);
-        });
+        resolve(row);
       }
     );
   });

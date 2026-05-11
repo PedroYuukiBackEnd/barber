@@ -33,15 +33,12 @@ function getUserById(id) {
 
 function createUser(tenantId, name, email, passwordHash, role = 'admin') {
   return new Promise((resolve, reject) => {
-    db.run(
-      'INSERT INTO users (tenant_id, name, email, password_hash, role) VALUES (?, ?, ?, ?, ?)',
+    db.get(
+      'INSERT INTO users (tenant_id, name, email, password_hash, role) VALUES (?, ?, ?, ?, ?) RETURNING id, tenant_id, name, email, role',
       [tenantId, name, email, passwordHash, role],
-      function (err) {
+      (err, row) => {
         if (err) return reject(err);
-        db.get('SELECT id, tenant_id, name, email, role FROM users WHERE id = ?', [this.lastID], (err, row) => {
-          if (err) reject(err);
-          else resolve(row);
-        });
+        resolve(row);
       }
     );
   });

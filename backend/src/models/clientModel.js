@@ -15,15 +15,12 @@ function listClients(tenantId) {
 
 function createClient(tenantId, name, phone, notes) {
   return new Promise((resolve, reject) => {
-    db.run(
-      'INSERT INTO clients (tenant_id, name, phone, notes) VALUES (?, ?, ?, ?)',
+    db.get(
+      'INSERT INTO clients (tenant_id, name, phone, notes) VALUES (?, ?, ?, ?) RETURNING id, name, phone, notes, created_at',
       [tenantId, name, phone, notes],
-      function (err) {
+      (err, row) => {
         if (err) return reject(err);
-        db.get('SELECT id, name, phone, notes, created_at FROM clients WHERE id = ?', [this.lastID], (err, row) => {
-          if (err) reject(err);
-          else resolve(row);
-        });
+        resolve(row);
       }
     );
   });

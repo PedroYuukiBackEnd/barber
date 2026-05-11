@@ -71,27 +71,25 @@ function listAppointments(tenantId) {
 
 function createAppointment(tenantId, clientId, appointmentDate, total, paymentType, paymentStatus, notes, services) {
   return new Promise((resolve, reject) => {
-    db.run(
-      'INSERT INTO appointments (tenant_id, client_id, appointment_date, total, payment_type, payment_status, notes) VALUES (?, ?, ?, ?, ?, ?, ?)',
+    db.get(
+      'INSERT INTO appointments (tenant_id, client_id, appointment_date, total, payment_type, payment_status, notes) VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id',
       [tenantId, clientId, appointmentDate, total, paymentType, paymentStatus, notes],
-      function (err) {
+      async (err, inserted) => {
         if (err) return reject(err);
-        const appointmentId = this.lastID;
-        const serviceInserts = services.map(service => ({
-          appointment_id: appointmentId,
-          service_id: service.id,
-          service_name: service.name,
-          service_price: service.price
-        }));
-        const stmt = db.prepare('INSERT INTO appointment_services (appointment_id, service_id, service_name, service_price) VALUES (?, ?, ?, ?)');
-        serviceInserts.forEach(insert => {
-          stmt.run(insert.appointment_id, insert.service_id, insert.service_name, insert.service_price);
-        });
-        stmt.finalize();
-        db.get('SELECT id, appointment_date, total, payment_status, notes FROM appointments WHERE id = ?', [appointmentId], (err, row) => {
-          if (err) reject(err);
-          else resolve(row);
-        });
+        const appointmentId = inserted.id;
+        try {
+          await Promise.all(services.map((service) => db.run(
+            'INSERT INTO appointment_services (appointment_id, service_id, service_name, service_price) VALUES (?, ?, ?, ?)',
+            [appointmentId, service.id, service.name, service.price]
+          )));
+
+          db.get('SELECT id, appointment_date, total, payment_status, notes FROM appointments WHERE id = ?', [appointmentId], (err, row) => {
+            if (err) reject(err);
+            else resolve(row);
+          });
+        } catch (error) {
+          reject(error);
+        }
       }
     );
   });
@@ -122,18 +120,12 @@ function updateAppointment(id, tenantId, clientId, appointmentDate, total, payme
       [clientId, appointmentDate, total, paymentType, paymentStatus, notes, id, tenantId],
       function (err) {
         if (err) return reject(err);
-        deleteAppointmentServices(id).then(() => {
-          const serviceInserts = services.map(service => ({
-            appointment_id: id,
-            service_id: service.id,
-            service_name: service.name,
-            service_price: service.price
-          }));
-          const stmt = db.prepare('INSERT INTO appointment_services (appointment_id, service_id, service_name, service_price) VALUES (?, ?, ?, ?)');
-          serviceInserts.forEach(insert => {
-            stmt.run(insert.appointment_id, insert.service_id, insert.service_name, insert.service_price);
-          });
-          stmt.finalize();
+        deleteAppointmentServices(id).then(async () => {
+          await Promise.all(services.map((service) => db.run(
+            'INSERT INTO appointment_services (appointment_id, service_id, service_name, service_price) VALUES (?, ?, ?, ?)',
+            [id, service.id, service.name, service.price]
+          )));
+
           db.get('SELECT id, appointment_date, total, payment_status, notes FROM appointments WHERE id = ?', [id], (err, row) => {
             if (err) reject(err);
             else resolve(row);

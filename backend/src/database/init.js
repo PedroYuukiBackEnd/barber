@@ -42,7 +42,7 @@ async function seedDefaultAdmin() {
   const tenantName = process.env.DEFAULT_TENANT_NAME || 'Barbearia Pedro';
 
   const passwordHash = await bcrypt.hash(adminPassword, 10);
-  const tenant = await run('INSERT INTO tenants (name) VALUES (?)', [tenantName]);
+  const tenant = await run('INSERT INTO tenants (name) VALUES (?) RETURNING id', [tenantName]);
   await run(
     'INSERT INTO users (tenant_id, name, email, password_hash, role) VALUES (?, ?, ?, ?, ?)',
     [tenant.lastID, adminName, adminEmail, passwordHash, 'admin']
