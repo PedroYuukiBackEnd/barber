@@ -21,6 +21,42 @@ function sendToken(res, token) {
   });
 }
 
+function buildUserBillingInfo(user) {
+  const billingDays = Number(user.billing_elapsed_days || 0);
+  const paidHours = user.billing_paid_age_hours === null || user.billing_paid_age_hours === undefined
+    ? null
+    : Number(user.billing_paid_age_hours);
+  const paidRecently = Number.isFinite(paidHours) && paidHours >= 0 && paidHours < 24;
+  const billingType = user.billing_type || 'subscription';
+
+  return {
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    role: user.role,
+    tenant_id: user.tenant_id,
+    billing_type: billingType,
+    billing_days: Number.isFinite(billingDays) ? billingDays : 0,
+    billing_is_due: billingType === 'subscription' && billingDays >= 30,
+    billing_paid_recently: paidRecently,
+    show_billing_charge: billingType === 'subscription' && user.role !== 'superadmin' && billingDays >= 30 && !paidRecently,
+  };
+}
+
+async function getUserWithBilling(userId) {
+  return db.get(
+    `SELECT id, tenant_id, name, email, role, billing_type, created_at, billing_cycle_started_at, billing_paid_at,
+            FLOOR(EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - COALESCE(billing_cycle_started_at, created_at))) / 86400)::int AS billing_elapsed_days,
+            CASE
+              WHEN billing_paid_at IS NULL THEN NULL
+              ELSE EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - billing_paid_at)) / 3600
+            END AS billing_paid_age_hours
+     FROM users
+     WHERE id = ?`,
+    [userId]
+  );
+}
+
 async function register(req, res, next) {
   try {
     if (process.env.ENABLE_PUBLIC_REGISTRATION !== 'true') {
@@ -39,7 +75,7 @@ async function register(req, res, next) {
 
     const passwordHash = await bcrypt.hash(password, 12);
     const tenant = await createTenant(tenantName);
-    const user = await createUser(tenant.id, name, email, passwordHash, 'admin');
+    const user = await createUser(tenant.id, name, email, passwordHash, 'user');
 
     const token = createToken(user.id);
     sendToken(res, token);
@@ -71,7 +107,8 @@ async function login(req, res, next) {
     const token = createToken(user.id);
     sendToken(res, token);
 
-    return res.json({ user: { id: user.id, name: user.name, email: user.email, role: user.role, tenant_id: user.tenant_id }, tenant });
+    const userWithBilling = await getUserWithBilling(user.id);
+    return res.json({ user: buildUserBillingInfo(userWithBilling || user), tenant });
   } catch (error) {
     next(error);
   }
@@ -84,9 +121,9 @@ async function logout(req, res) {
 
 async function me(req, res, next) {
   try {
-    const user = await getUserById(req.user.id);
+    const user = await getUserWithBilling(req.user.id);
     const tenant = await getTenantById(req.user.tenant_id);
-    res.json({ user, tenant });
+    res.json({ user: buildUserBillingInfo(user), tenant });
   } catch (error) {
     next(error);
   }

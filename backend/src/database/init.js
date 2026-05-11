@@ -1,5 +1,6 @@
 const path = require('path');
 const fs = require('fs');
+require('dotenv').config({ path: path.join(__dirname, '../../.env') });
 const bcrypt = require('bcrypt');
 const db = require('../config/db');
 
@@ -76,7 +77,9 @@ async function initDatabase() {
   const schema = fs.readFileSync(schemaPath, 'utf8');
   await exec(schema);
   await ensureTenantColumns();
+  await ensureUserColumns();
   await ensureRecommendationsTable();
+  await ensureBugReportsTable();
   await ensureServiceHistoryTable();
   await seedDefaultSuperadmin();
   console.log('Banco de dados pronto.');
@@ -90,6 +93,22 @@ async function ensureTenantColumns() {
   );
   if (!column) {
     await run("ALTER TABLE tenants ADD COLUMN border_color TEXT NOT NULL DEFAULT '#3f3f46'");
+  }
+  await run("UPDATE tenants SET theme_color = '#d4d4d8' WHERE theme_color = '#1a73e8'");
+}
+
+async function ensureUserColumns() {
+  const columns = await db.all(
+    `SELECT column_name AS name
+     FROM information_schema.columns
+     WHERE table_name = 'users'`
+  );
+  const columnNames = columns.map((column) => column.name);
+  if (!columnNames.includes('admin_notes')) {
+    await run("ALTER TABLE users ADD COLUMN admin_notes TEXT DEFAULT ''");
+  }
+  if (!columnNames.includes('billing_type')) {
+    await run("ALTER TABLE users ADD COLUMN billing_type TEXT NOT NULL DEFAULT 'subscription'");
   }
 }
 
@@ -105,6 +124,34 @@ async function ensureRecommendationsTable() {
       created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
   `);
+}
+
+async function ensureBugReportsTable() {
+  await exec(`
+    CREATE TABLE IF NOT EXISTS bug_reports (
+      id SERIAL PRIMARY KEY,
+      tenant_id INTEGER NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      client_name TEXT NOT NULL,
+      barbershop_name TEXT NOT NULL,
+      description TEXT NOT NULL,
+      resolved_at TIMESTAMP DEFAULT NULL,
+      resolution_message TEXT DEFAULT '',
+      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
+  const columns = await db.all(
+    `SELECT column_name AS name
+     FROM information_schema.columns
+     WHERE table_name = 'bug_reports'`
+  );
+  const columnNames = columns.map((column) => column.name);
+  if (!columnNames.includes('resolved_at')) {
+    await run('ALTER TABLE bug_reports ADD COLUMN resolved_at TIMESTAMP DEFAULT NULL');
+  }
+  if (!columnNames.includes('resolution_message')) {
+    await run("ALTER TABLE bug_reports ADD COLUMN resolution_message TEXT DEFAULT ''");
+  }
 }
 
 async function ensureServiceHistoryTable() {

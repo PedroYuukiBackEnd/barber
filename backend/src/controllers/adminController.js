@@ -4,6 +4,7 @@ const { createTenant } = require('../models/tenantModel');
 const { createUser, updateUser } = require('../models/userModel');
 
 const ALLOWED_ROLES = ['superadmin', 'admin', 'user'];
+const ALLOWED_BILLING_TYPES = ['subscription', 'full_payment'];
 
 function runQuery(query, params = []) {
   return new Promise((resolve, reject) => {
@@ -37,6 +38,12 @@ async function ensureBillingColumns() {
   if (!columnNames.includes('billing_paid_at')) {
     await runQuery('ALTER TABLE users ADD COLUMN billing_paid_at TIMESTAMP DEFAULT NULL');
   }
+  if (!columnNames.includes('admin_notes')) {
+    await runQuery("ALTER TABLE users ADD COLUMN admin_notes TEXT DEFAULT ''");
+  }
+  if (!columnNames.includes('billing_type')) {
+    await runQuery("ALTER TABLE users ADD COLUMN billing_type TEXT NOT NULL DEFAULT 'subscription'");
+  }
 }
 
 function buildUserBillingInfo(user) {
@@ -44,15 +51,24 @@ function buildUserBillingInfo(user) {
   const dayMs = 24 * 60 * 60 * 1000;
   const cycleStart = new Date(user.billing_cycle_started_at || user.created_at).getTime();
   const paidAt = user.billing_paid_at ? new Date(user.billing_paid_at).getTime() : null;
-  const billingDays = Number.isNaN(cycleStart) ? 0 : Math.max(0, Math.floor((now - cycleStart) / dayMs));
-  const paidRecently = paidAt ? (now - paidAt) < dayMs : false;
+  const sqlBillingDays = Number(user.billing_elapsed_days);
+  const sqlPaidHours = user.billing_paid_age_hours === null || user.billing_paid_age_hours === undefined
+    ? null
+    : Number(user.billing_paid_age_hours);
+  const billingDays = Number.isFinite(sqlBillingDays)
+    ? Math.max(0, sqlBillingDays)
+    : (Number.isNaN(cycleStart) ? 0 : Math.max(0, Math.floor((now - cycleStart) / dayMs)));
+  const paidRecently = Number.isFinite(sqlPaidHours)
+    ? sqlPaidHours >= 0 && sqlPaidHours < 24
+    : Boolean(paidAt && (now - paidAt) < dayMs);
 
   return {
     ...user,
     billing_days: billingDays,
     billing_is_due: billingDays >= 30,
     billing_paid_recently: paidRecently,
-    show_billing_charge: user.role !== 'superadmin' && (billingDays >= 30 || paidRecently),
+    billing_type: user.billing_type || 'subscription',
+    show_billing_charge: (user.billing_type || 'subscription') === 'subscription' && user.role !== 'superadmin' && (billingDays >= 30 || paidRecently),
   };
 }
 
@@ -66,7 +82,13 @@ async function getUsers(req, res, next) {
     await ensureBillingColumns();
     const users = await allQuery(
       `SELECT u.id, u.tenant_id, u.name, u.email, u.role, u.created_at,
-              u.billing_cycle_started_at, u.billing_paid_at, t.name AS tenant_name
+              u.billing_type, u.admin_notes, u.billing_cycle_started_at, u.billing_paid_at,
+              FLOOR(EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - COALESCE(u.billing_cycle_started_at, u.created_at))) / 86400)::int AS billing_elapsed_days,
+              CASE
+                WHEN u.billing_paid_at IS NULL THEN NULL
+                ELSE EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - u.billing_paid_at)) / 3600
+              END AS billing_paid_age_hours,
+              t.name AS tenant_name
        FROM users u
        JOIN tenants t ON t.id = u.tenant_id
        ORDER BY u.created_at DESC`
@@ -94,6 +116,69 @@ async function getRecommendations(req, res, next) {
   }
 }
 
+async function deleteRecommendation(req, res, next) {
+  try {
+    const { id } = req.params;
+    await runQuery('DELETE FROM recommendations WHERE id = ?', [id]);
+    res.json({ message: 'Recomendacao excluida com sucesso.' });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function getBugReports(req, res, next) {
+  try {
+    const reports = await allQuery(
+      `SELECT b.id, b.client_name, b.barbershop_name, b.description,
+              b.resolved_at, b.resolution_message, b.created_at,
+              u.name AS user_name, t.name AS tenant_name
+       FROM bug_reports b
+       JOIN users u ON u.id = b.user_id
+       JOIN tenants t ON t.id = b.tenant_id
+       WHERE b.resolved_at IS NULL
+       ORDER BY b.created_at DESC`
+    );
+
+    res.json({ reports });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function resolveBugReport(req, res, next) {
+  try {
+    const { id } = req.params;
+    const reports = await allQuery(
+      `SELECT b.id, b.client_name, b.barbershop_name, b.description, b.created_at,
+              u.name AS user_name, t.name AS tenant_name
+       FROM bug_reports b
+       JOIN users u ON u.id = b.user_id
+       JOIN tenants t ON t.id = b.tenant_id
+       WHERE b.id = ?`,
+      [id]
+    );
+
+    if (!reports.length) {
+      return res.status(404).json({ message: 'Report de bug nao encontrado.' });
+    }
+
+    const report = reports[0];
+    const message = `Obrigado pelo seu relato, ${report.client_name}. O bug informado na barbearia ${report.barbershop_name || report.tenant_name} foi resolvido. Sua ajuda melhora o sistema para todos.`;
+
+    const updated = await allQuery(
+      `UPDATE bug_reports
+       SET resolved_at = CURRENT_TIMESTAMP, resolution_message = ?
+       WHERE id = ?
+       RETURNING id, client_name, barbershop_name, description, resolved_at, resolution_message, created_at`,
+      [message, id]
+    );
+
+    res.json({ report: updated[0] });
+  } catch (error) {
+    next(error);
+  }
+}
+
 async function markUserBillingPaid(req, res, next) {
   try {
     await ensureBillingColumns();
@@ -110,7 +195,12 @@ async function markUserBillingPaid(req, res, next) {
     }
 
     const users = await allQuery(
-      `SELECT id, name, email, role, created_at, billing_cycle_started_at, billing_paid_at
+      `SELECT id, name, email, role, billing_type, created_at, billing_cycle_started_at, billing_paid_at,
+              FLOOR(EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - COALESCE(billing_cycle_started_at, created_at))) / 86400)::int AS billing_elapsed_days,
+              CASE
+                WHEN billing_paid_at IS NULL THEN NULL
+                ELSE EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - billing_paid_at)) / 3600
+              END AS billing_paid_age_hours
        FROM users
        WHERE id = ?`,
       [id]
@@ -175,7 +265,7 @@ async function createPlatformAdmin(req, res, next) {
 
 async function registerTenant(req, res, next) {
   try {
-    const { email, password, name, tenantName } = req.body;
+    const { email, password, name, tenantName, adminNotes, billingType } = req.body;
     if (!email || !password || !name || !tenantName) {
       return res.status(400).json({ message: 'Preencha nome da barbearia, nome completo, email e senha.' });
     }
@@ -183,9 +273,10 @@ async function registerTenant(req, res, next) {
       return res.status(400).json({ message: 'Email ja cadastrado.' });
     }
 
+    const selectedBillingType = ALLOWED_BILLING_TYPES.includes(billingType) ? billingType : 'subscription';
     const passwordHash = await bcrypt.hash(password, 12);
     const tenant = await createTenant(tenantName);
-    const user = await createUser(tenant.id, name, email, passwordHash, 'admin');
+    const user = await createUser(tenant.id, name, email, passwordHash, 'user', adminNotes || '', selectedBillingType);
 
     res.status(201).json({ user, tenant });
   } catch (error) {
@@ -196,12 +287,15 @@ async function registerTenant(req, res, next) {
 async function editUser(req, res, next) {
   try {
     const { id } = req.params;
-    const { name, email, role, password } = req.body;
+    const { name, email, role, billingType, adminNotes, password } = req.body;
     if (!name || !email || !role) {
       return res.status(400).json({ message: 'Nome, acesso e role sao obrigatorios.' });
     }
     if (!ALLOWED_ROLES.includes(role)) {
       return res.status(400).json({ message: 'Role invalida.' });
+    }
+    if (billingType && !ALLOWED_BILLING_TYPES.includes(billingType)) {
+      return res.status(400).json({ message: 'Tipo de cobranca invalido.' });
     }
     if (Number(id) === Number(req.user.id) && role !== 'superadmin') {
       return res.status(400).json({ message: 'Voce nao pode remover seu proprio acesso de superadmin.' });
@@ -212,11 +306,11 @@ async function editUser(req, res, next) {
       passwordHash = await bcrypt.hash(password, 12);
     }
 
-    const updated = await updateUser(id, name, email, role, passwordHash);
+    const updated = await updateUser(id, name, email, role, billingType || 'subscription', adminNotes || '', passwordHash);
     res.json({ user: updated });
   } catch (error) {
     next(error);
   }
 }
 
-module.exports = { getUsers, getRecommendations, registerTenant, editUser, deleteUser, createPlatformAdmin, markUserBillingPaid };
+module.exports = { getUsers, getRecommendations, deleteRecommendation, getBugReports, resolveBugReport, registerTenant, editUser, deleteUser, createPlatformAdmin, markUserBillingPaid };

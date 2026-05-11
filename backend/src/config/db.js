@@ -3,10 +3,7 @@ const { Pool } = require('pg');
 const connectionString = process.env.DATABASE_URL;
 
 if (!connectionString) {
-  console.warn('AVISO: DATABASE_URL nao definida. Configure a URL do PostgreSQL no ambiente.');
-  if (process.env.NODE_ENV === 'production') {
-    throw new Error('DATABASE_URL e obrigatoria em producao.');
-  }
+  throw new Error('DATABASE_URL e obrigatoria. Configure backend/.env para rodar o sistema.');
 }
 
 const pool = new Pool({

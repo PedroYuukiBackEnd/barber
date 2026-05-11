@@ -354,7 +354,7 @@
           </div>
 
           <div class="table-card glass-panel">
-            <div class="appointment-filters">
+            <div class="appointment-filters history-filters">
               <div class="input-group">
                 <label>Cliente</label>
                 <select id="history-filter-client">
@@ -443,7 +443,23 @@
             <div class="form-actions">
               <button class="button-primary" type="submit">Enviar Relato <i class="ph ph-paper-plane-right"></i></button>
             </div>
+            <p class="message" id="bug-message"></p>
           </form>
+
+          <div class="table-card glass-panel" style="margin-top: 24px;">
+            <div class="table-wrapper">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Report</th>
+                    <th>Status</th>
+                    <th>Mensagem</th>
+                  </tr>
+                </thead>
+                <tbody id="bug-reports-table"></tbody>
+              </table>
+            </div>
+          </div>
         </section>
 
         <!-- Painel de Configurações -->
@@ -509,6 +525,15 @@
 
       </div>
     </main>
+
+    <div id="billing-renewal-modal" class="billing-modal hidden" role="dialog" aria-modal="true">
+      <div class="billing-modal-card glass-panel">
+        <i class="ph ph-warning-circle billing-modal-icon"></i>
+        <h3>RenovaÃ§Ã£o de assinatura</h3>
+        <p id="billing-renewal-message"></p>
+        <button class="button-primary w-full" type="button" id="billing-renewal-close">Entendi</button>
+      </div>
+    </div>
   </section>
 
 

@@ -1,7 +1,7 @@
 CREATE TABLE IF NOT EXISTS tenants (
   id SERIAL PRIMARY KEY,
   name TEXT NOT NULL,
-  theme_color TEXT NOT NULL DEFAULT '#1a73e8',
+  theme_color TEXT NOT NULL DEFAULT '#d4d4d8',
   border_color TEXT NOT NULL DEFAULT '#3f3f46',
   logo_url TEXT DEFAULT '',
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -13,7 +13,9 @@ CREATE TABLE IF NOT EXISTS users (
   name TEXT NOT NULL,
   email TEXT NOT NULL UNIQUE,
   password_hash TEXT NOT NULL,
-  role TEXT NOT NULL DEFAULT 'admin',
+  role TEXT NOT NULL DEFAULT 'user',
+  billing_type TEXT NOT NULL DEFAULT 'subscription',
+  admin_notes TEXT DEFAULT '',
   billing_cycle_started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   billing_paid_at TIMESTAMP DEFAULT NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -64,6 +66,18 @@ CREATE TABLE IF NOT EXISTS recommendations (
   client_name TEXT NOT NULL,
   barbershop_name TEXT NOT NULL,
   recommendation TEXT NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS bug_reports (
+  id SERIAL PRIMARY KEY,
+  tenant_id INTEGER NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  client_name TEXT NOT NULL,
+  barbershop_name TEXT NOT NULL,
+  description TEXT NOT NULL,
+  resolved_at TIMESTAMP DEFAULT NULL,
+  resolution_message TEXT DEFAULT '',
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 

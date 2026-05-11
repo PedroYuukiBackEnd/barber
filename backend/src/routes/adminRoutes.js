@@ -1,6 +1,6 @@
 const express = require('express');
 const { authMiddleware } = require('../middleware/authMiddleware');
-const { getUsers, getRecommendations, registerTenant, editUser, deleteUser, createPlatformAdmin, markUserBillingPaid } = require('../controllers/adminController');
+const { getUsers, getRecommendations, deleteRecommendation, getBugReports, resolveBugReport, registerTenant, editUser, deleteUser, createPlatformAdmin, markUserBillingPaid } = require('../controllers/adminController');
 
 const router = express.Router();
 
@@ -15,6 +15,9 @@ router.use(authMiddleware, superadminOnly);
 
 router.get('/users', getUsers);
 router.get('/recommendations', getRecommendations);
+router.delete('/recommendations/:id', deleteRecommendation);
+router.get('/bug-reports', getBugReports);
+router.patch('/bug-reports/:id/resolve', resolveBugReport);
 router.post('/register', registerTenant);
 router.post('/users/admin', createPlatformAdmin);
 router.patch('/users/:id/billing', markUserBillingPaid);

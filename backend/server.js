@@ -11,6 +11,7 @@ const clientRoutes = require('./src/routes/clientRoutes');
 const serviceRoutes = require('./src/routes/serviceRoutes');
 const appointmentRoutes = require('./src/routes/appointmentRoutes');
 const recommendationRoutes = require('./src/routes/recommendationRoutes');
+const bugReportRoutes = require('./src/routes/bugReportRoutes');
 const adminRoutes = require('./src/routes/adminRoutes');
 const { errorHandler } = require('./src/middleware/errorHandler');
 
@@ -48,6 +49,7 @@ app.use('/api/clients', clientRoutes);
 app.use('/api/services', serviceRoutes);
 app.use('/api/appointments', appointmentRoutes);
 app.use('/api/recommendations', recommendationRoutes);
+app.use('/api/bug-reports', bugReportRoutes);
 app.use('/api/admin', adminRoutes);
 
 const frontendPath = path.join(__dirname, '../frontend');

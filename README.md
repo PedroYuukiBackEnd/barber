@@ -14,6 +14,11 @@ Sistema web para gerenciar barbearias com login, clientes, servicos, agendamento
 - Dados de clientes, servicos e agendamentos isolados por `tenant_id`.
 - Cadastro publico desativado por padrao em producao.
 - Formulario de recomendacoes dentro de Configuracoes, vinculado ao usuario e a barbearia logados.
+- Formulario de reports de bugs no painel do cliente, visivel para o superadmin no painel admin.
+- Painel admin com notificacoes de clientes a cobrar, reports de bugs e recomendacoes.
+- Notas internas por barbearia/usuario no cadastro e edicao.
+- Cadastro de barbearia com tipo de cobranca: assinatura ou pagamento completo.
+- Aviso de renovacao de assinatura no painel do cliente ao atingir 30 dias.
 - Historico de servicos finalizados com filtros por data, horario, valor, pagamento e servico.
 
 ## Variaveis de ambiente
@@ -45,7 +50,7 @@ Build Command: npm install
 Start Command: npm start
 ```
 
-Depois do primeiro deploy, entre em `/admin.html` com o `DEFAULT_SUPERADMIN_EMAIL` e `DEFAULT_SUPERADMIN_PASSWORD`, crie as barbearias dos clientes pelo painel e entregue o acesso de cada uma.
+Depois do primeiro deploy, entre em `/admin.html` com o `DEFAULT_SUPERADMIN_EMAIL` e `DEFAULT_SUPERADMIN_PASSWORD`, crie as barbearias dos clientes pelo painel e entregue o acesso de cada uma. O cadastro de barbearia criado pelo painel recebe role `user`.
 
 Ao cadastrar uma barbearia, informe:
 
@@ -61,4 +66,11 @@ npm install
 npm start
 ```
 
-Para rodar localmente, crie `backend/.env` com as variaveis acima apontando para um PostgreSQL de teste.
+Para rodar localmente, crie `backend/.env` com as variaveis acima apontando para um PostgreSQL de teste. Se usar Neon localmente, mantenha `DATABASE_SSL=true`, `NODE_ENV=development` e `FRONTEND_URL=http://localhost:4000`.
+
+Depois abra:
+
+```text
+http://localhost:4000
+http://localhost:4000/admin.html
+```

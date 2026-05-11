@@ -5,6 +5,7 @@ const state = {
   services: [],
   appointments: [],
   serviceHistory: [],
+  bugReports: [],
   editing: { client: null, service: null, appointment: null },
 };
 
@@ -48,6 +49,9 @@ const authSection = document.getElementById('auth-section');
 const appSection = document.getElementById('app-section');
 const tenantNameTitle = document.getElementById('tenant-name');
 const logoutButton = document.getElementById('logout-button');
+const billingRenewalModal = document.getElementById('billing-renewal-modal');
+const billingRenewalMessage = document.getElementById('billing-renewal-message');
+const billingRenewalClose = document.getElementById('billing-renewal-close');
 
 const loginCard = document.getElementById('login-card');
 const loginForm = document.getElementById('login-form');
@@ -65,6 +69,7 @@ const clientsTable = document.getElementById('clients-table');
 const servicesTable = document.getElementById('services-table');
 const appointmentsTable = document.getElementById('appointments-table');
 const historyTable = document.getElementById('history-table');
+const bugReportsTable = document.getElementById('bug-reports-table');
 const appointmentClient = document.getElementById('appointment-client');
 const appointmentServices = document.getElementById('appointment-services');
 const appointmentTotal = document.getElementById('appointment-total');
@@ -88,6 +93,7 @@ const clientForm = document.getElementById('client-form');
 const serviceForm = document.getElementById('service-form');
 const appointmentForm = document.getElementById('appointment-form');
 const bugForm = document.getElementById('bug-form');
+const bugMessage = document.getElementById('bug-message');
 
 const newClientButton = document.getElementById('new-client');
 const cancelClientButton = document.getElementById('cancel-client');
@@ -109,6 +115,9 @@ const recommendationClientName = document.getElementById('recommendation-client-
 const recommendationBarbershopName = document.getElementById('recommendation-barbershop-name');
 const recommendationText = document.getElementById('recommendation-text');
 
+const DEFAULT_PRIMARY_COLOR = '#d4d4d8';
+const LEGACY_DEFAULT_PRIMARY_COLOR = '#1a73e8';
+const DEFAULT_BORDER_COLOR = '#3f3f46';
 
 // --- Layout & Navigation ---
 function toggleSidebar() {
@@ -133,6 +142,7 @@ function showApp() {
   if (state.tenant) {
     tenantNameTitle.textContent = state.tenant.name;
   }
+  showBillingRenewalModal();
 }
 
 function showAuth() {
@@ -140,9 +150,28 @@ function showAuth() {
   appSection.classList.add('hidden');
 }
 
+function showBillingRenewalModal() {
+  if (!billingRenewalModal || !billingRenewalMessage || !state.user?.show_billing_charge) return;
+  billingRenewalMessage.textContent = `Sua assinatura atingiu ${state.user.billing_days || 30} dias de uso. Entre em contato com o administrador para renovar o acesso da barbearia.`;
+  billingRenewalModal.classList.remove('hidden');
+}
+
+function hideBillingRenewalModal() {
+  if (billingRenewalModal) billingRenewalModal.classList.add('hidden');
+}
+
 function applyHudColors({ primaryColor, borderColor }) {
-  if (primaryColor) document.documentElement.style.setProperty('--primary-color', primaryColor);
-  if (borderColor) document.documentElement.style.setProperty('--border-color', borderColor);
+  if (primaryColor && primaryColor !== LEGACY_DEFAULT_PRIMARY_COLOR) {
+    document.documentElement.style.setProperty('--primary-color', primaryColor);
+  } else {
+    document.documentElement.style.removeProperty('--primary-color');
+  }
+
+  if (borderColor && borderColor !== DEFAULT_BORDER_COLOR) {
+    document.documentElement.style.setProperty('--border-color', borderColor);
+  } else {
+    document.documentElement.style.removeProperty('--border-color');
+  }
 }
 
 
@@ -402,6 +431,22 @@ function renderServiceHistory() {
   }).join('');
 }
 
+function renderBugReports() {
+  if (!bugReportsTable) return;
+  if (!state.bugReports.length) {
+    bugReportsTable.innerHTML = '<tr><td colspan="3">Nenhum relato enviado ainda.</td></tr>';
+    return;
+  }
+
+  bugReportsTable.innerHTML = state.bugReports.map((report) => `
+    <tr>
+      <td>${escapeHtml(report.description)}</td>
+      <td>${report.resolved_at ? 'Resolvido' : 'Em analise'}</td>
+      <td>${escapeHtml(report.resolution_message || '-')}</td>
+    </tr>
+  `).join('');
+}
+
 function fillAppointmentServices() {
   appointmentServices.innerHTML = state.services.map((service) => `
     <label class="checkbox-item">
@@ -453,22 +498,25 @@ function fillClientSelect() {
 // --- Data Loading ---
 async function loadAppData() {
   try {
-    const [clientsRes, servicesRes, appointmentsRes, historyRes] = await Promise.all([
+    const [clientsRes, servicesRes, appointmentsRes, historyRes, bugReportsRes] = await Promise.all([
       apiFetch('/api/clients'),
       apiFetch('/api/services'),
       apiFetch('/api/appointments'),
-      apiFetch('/api/appointments/history')
+      apiFetch('/api/appointments/history'),
+      apiFetch('/api/bug-reports')
     ]);
     
     state.clients = clientsRes.clients || [];
     state.services = servicesRes.services || [];
     state.appointments = appointmentsRes.appointments || [];
     state.serviceHistory = historyRes.history || [];
+    state.bugReports = bugReportsRes.reports || [];
 
     renderClients();
     renderServices();
     renderAppointments();
     renderServiceHistory();
+    renderBugReports();
     fillClientSelect();
     fillAppointmentServices();
     fillAppointmentServiceFilter();
@@ -600,15 +648,33 @@ async function handleAppointmentSubmit(event) {
 
 async function handleBugSubmit(event) {
   event.preventDefault();
+  if (bugMessage) bugMessage.textContent = 'Enviando relato...';
   const clientName = document.getElementById('bug-client-name').value.trim();
   const barbershopName = document.getElementById('bug-barbershop-name').value.trim();
   const description = document.getElementById('bug-description').value.trim();
 
-  if (!clientName || !barbershopName || !description) return;
+  if (!clientName || !barbershopName || !description) {
+    if (bugMessage) bugMessage.textContent = 'Preencha nome, barbearia e descricao do problema.';
+    return;
+  }
 
-  // Since there is no specific backend endpoint yet, we simulate a successful submission
-  alert('Relato enviado com sucesso! Nossa equipe analisará o problema.');
-  bugForm.reset();
+  try {
+    const data = await apiFetch('/api/bug-reports', 'POST', {
+      client_name: clientName,
+      barbershop_name: barbershopName,
+      description,
+    });
+
+    if (data?.bugReport) {
+      bugForm.reset();
+      if (state.user?.name) document.getElementById('bug-client-name').value = state.user.name;
+      if (state.tenant?.name) document.getElementById('bug-barbershop-name').value = state.tenant.name;
+      if (bugMessage) bugMessage.textContent = 'Relato enviado com sucesso! Nossa equipe analisara o problema.';
+      await loadAppData();
+    }
+  } catch (error) {
+    if (bugMessage) bugMessage.textContent = error.message;
+  }
 }
 
 // --- Open Forms ---
@@ -719,6 +785,7 @@ async function handleTableClick(event) {
 function bindEvents() {
   loginForm.addEventListener('submit', handleLogin);
   logoutButton.addEventListener('click', handleLogout);
+  if (billingRenewalClose) billingRenewalClose.addEventListener('click', hideBillingRenewalModal);
   
   if (menuToggle) menuToggle.addEventListener('click', toggleSidebar);
   if (closeSidebar) closeSidebar.addEventListener('click', toggleSidebar);
@@ -845,10 +912,12 @@ async function loadTenantAppearanceSettings() {
       borderColor: settings.border_color,
     });
 
-    if (primaryColorInput && settings.theme_color) primaryColorInput.value = settings.theme_color;
-    if (borderColorInput && settings.border_color) borderColorInput.value = settings.border_color;
+    if (primaryColorInput) primaryColorInput.value = settings.theme_color === LEGACY_DEFAULT_PRIMARY_COLOR ? DEFAULT_PRIMARY_COLOR : (settings.theme_color || DEFAULT_PRIMARY_COLOR);
+    if (borderColorInput) borderColorInput.value = settings.border_color || DEFAULT_BORDER_COLOR;
     if (recommendationBarbershopName && settings.name) recommendationBarbershopName.value = settings.name;
     if (recommendationClientName && state.user?.name) recommendationClientName.value = state.user.name;
+    if (document.getElementById('bug-barbershop-name') && settings.name) document.getElementById('bug-barbershop-name').value = settings.name;
+    if (document.getElementById('bug-client-name') && state.user?.name) document.getElementById('bug-client-name').value = state.user.name;
   } catch (error) {
     // silencioso - sem backend ainda
   }
