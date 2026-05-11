@@ -2,11 +2,8 @@ const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 const express = require('express');
 const cookieParser = require('cookie-parser');
-
-const JWT_SECRET = process.env.JWT_SECRET || 'uma_chave_super_segura';
-if (!process.env.JWT_SECRET) {
-  console.warn('AVISO: JWT_SECRET não definido em variáveis de ambiente. Usando segredo de desenvolvimento padrão. Configure backend/.env para produção.');
-}
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 const cors = require('cors');
 const { initDatabase } = require('./src/database/init');
 const authRoutes = require('./src/routes/authRoutes');
@@ -16,14 +13,35 @@ const appointmentRoutes = require('./src/routes/appointmentRoutes');
 const adminRoutes = require('./src/routes/adminRoutes');
 const { errorHandler } = require('./src/middleware/errorHandler');
 
+if (!process.env.JWT_SECRET) {
+  console.warn('AVISO: JWT_SECRET nao definido. Usando segredo de desenvolvimento padrao.');
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('JWT_SECRET e obrigatorio em producao.');
+  }
+}
+
 const app = express();
 const PORT = process.env.PORT || 4000;
 const FRONTEND_URL = process.env.FRONTEND_URL || `http://localhost:${PORT}`;
 
-app.use(express.json());
+app.set('trust proxy', 1);
+app.use(helmet({
+  contentSecurityPolicy: false,
+}));
+app.use(express.json({ limit: '100kb' }));
 app.use(cookieParser());
 app.use(cors({ origin: FRONTEND_URL, credentials: true }));
 
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: 'Muitas tentativas. Tente novamente em alguns minutos.' },
+});
+
+app.use('/api/auth/login', authLimiter);
+app.use('/api/auth/register', authLimiter);
 app.use('/api/auth', authRoutes);
 app.use('/api/clients', clientRoutes);
 app.use('/api/services', serviceRoutes);

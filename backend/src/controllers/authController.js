@@ -23,6 +23,10 @@ function sendToken(res, token) {
 
 async function register(req, res, next) {
   try {
+    if (process.env.ENABLE_PUBLIC_REGISTRATION !== 'true') {
+      return res.status(403).json({ message: 'Cadastro publico desativado. Solicite acesso ao administrador.' });
+    }
+
     const { email, password, name, tenantName } = req.body;
     if (!email || !password || !name || !tenantName) {
       return res.status(400).json({ message: 'Preencha nome, email, senha e nome da barbearia.' });
@@ -33,9 +37,9 @@ async function register(req, res, next) {
       return res.status(400).json({ message: 'Email já cadastrado.' });
     }
 
-    const passwordHash = await bcrypt.hash(password, 10);
+    const passwordHash = await bcrypt.hash(password, 12);
     const tenant = await createTenant(tenantName);
-    const user = await createUser(tenant.id, name, email, passwordHash);
+    const user = await createUser(tenant.id, name, email, passwordHash, 'admin');
 
     const token = createToken(user.id);
     sendToken(res, token);
@@ -99,8 +103,8 @@ async function getTenant(req, res, next) {
 
 async function updateTenantSettings(req, res, next) {
   try {
-    const { name, theme_color } = req.body;
-    const tenant = await updateTenant(req.user.tenant_id, { name, theme_color });
+    const { name, theme_color, border_color } = req.body;
+    const tenant = await updateTenant(req.user.tenant_id, { name, theme_color, border_color });
     res.json({ tenant });
   } catch (error) {
     next(error);

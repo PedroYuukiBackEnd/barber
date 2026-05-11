@@ -32,30 +32,63 @@ function exec(sql) {
   });
 }
 
-async function seedDefaultAdmin() {
-  const adminCount = await get('SELECT COUNT(*) AS count FROM users');
-  if (adminCount.count > 0) return;
+async function seedDefaultSuperadmin() {
+  const superadminCount = await get("SELECT COUNT(*) AS count FROM users WHERE role = 'superadmin'");
+  if (Number(superadminCount.count) > 0) return;
 
-  const adminName = process.env.DEFAULT_ADMIN_NAME || 'Pedro Yuuki Onisi Tanaka';
-  const adminEmail = process.env.DEFAULT_ADMIN_EMAIL || adminName;
-  const adminPassword = process.env.DEFAULT_ADMIN_PASSWORD || 'pedroyuuki2008';
-  const tenantName = process.env.DEFAULT_TENANT_NAME || 'Barbearia Pedro';
+  const adminName = process.env.DEFAULT_SUPERADMIN_NAME || 'Dono da Plataforma';
+  const adminEmail = process.env.DEFAULT_SUPERADMIN_EMAIL;
+  const adminPassword = process.env.DEFAULT_SUPERADMIN_PASSWORD;
+  const tenantName = process.env.DEFAULT_PLATFORM_TENANT_NAME || 'Plataforma';
 
-  const passwordHash = await bcrypt.hash(adminPassword, 10);
+  if (!adminEmail || !adminPassword) {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('Configure DEFAULT_SUPERADMIN_EMAIL e DEFAULT_SUPERADMIN_PASSWORD no primeiro deploy.');
+    }
+    console.warn('DEFAULT_SUPERADMIN_EMAIL nao definido. Pulando superadmin padrao no ambiente local.');
+    return;
+  }
+
+  const existingUser = await get('SELECT id FROM users WHERE email = ?', [adminEmail]);
+  if (existingUser) {
+    const passwordHash = await bcrypt.hash(adminPassword, 12);
+    await run('UPDATE users SET name = ?, password_hash = ?, role = ? WHERE id = ?', [
+      adminName,
+      passwordHash,
+      'superadmin',
+      existingUser.id,
+    ]);
+    console.log('Usuario existente promovido para superadmin.');
+    return;
+  }
+
+  const passwordHash = await bcrypt.hash(adminPassword, 12);
   const tenant = await run('INSERT INTO tenants (name) VALUES (?) RETURNING id', [tenantName]);
   await run(
     'INSERT INTO users (tenant_id, name, email, password_hash, role) VALUES (?, ?, ?, ?, ?)',
-    [tenant.lastID, adminName, adminEmail, passwordHash, 'admin']
+    [tenant.lastID, adminName, adminEmail, passwordHash, 'superadmin']
   );
 
-  console.log('Usuario admin padrao criado.');
+  console.log('Superadmin inicial criado.');
 }
 
 async function initDatabase() {
   const schema = fs.readFileSync(schemaPath, 'utf8');
   await exec(schema);
-  await seedDefaultAdmin();
+  await ensureTenantColumns();
+  await seedDefaultSuperadmin();
   console.log('Banco de dados pronto.');
+}
+
+async function ensureTenantColumns() {
+  const column = await get(
+    `SELECT column_name
+     FROM information_schema.columns
+     WHERE table_name = 'tenants' AND column_name = 'border_color'`
+  );
+  if (!column) {
+    await run("ALTER TABLE tenants ADD COLUMN border_color TEXT NOT NULL DEFAULT '#3f3f46'");
+  }
 }
 
 if (require.main === module) {

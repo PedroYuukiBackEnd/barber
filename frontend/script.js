@@ -7,6 +7,14 @@ const state = {
   editing: { client: null, service: null, appointment: null },
 };
 
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/service-worker.js').catch((error) => {
+      console.warn('Service worker registration failed:', error);
+    });
+  });
+}
+
 // --- API Helpers ---
 async function apiFetch(endpoint, method = 'GET', body = null) {
   const options = {
@@ -149,6 +157,15 @@ function formatCurrency(value) {
   return Number(value).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
 
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#039;');
+}
+
 function getPaymentTypeLabel(paymentType) {
   const labels = {
     'dinheiro': 'Dinheiro',
@@ -214,9 +231,9 @@ function updateTotals() {
 function renderClients() {
   clientsTable.innerHTML = state.clients.map((client) => `
     <tr>
-      <td>${client.name}</td>
-      <td>${client.phone || '-'}</td>
-      <td>${client.notes || '-'}</td>
+      <td>${escapeHtml(client.name)}</td>
+      <td>${escapeHtml(client.phone || '-')}</td>
+      <td>${escapeHtml(client.notes || '-')}</td>
       <td class="actions">
         <button class="button-secondary" data-action="edit-client" data-id="${client.id}">Editar</button>
         <button class="button-secondary" data-action="delete-client" data-id="${client.id}">Remover</button>
@@ -227,9 +244,9 @@ function renderClients() {
 function renderServices() {
   servicesTable.innerHTML = state.services.map((service) => `
     <tr>
-      <td>${service.name}</td>
+      <td>${escapeHtml(service.name)}</td>
       <td>${formatCurrency(service.price)}</td>
-      <td>${service.description || '-'}</td>
+      <td>${escapeHtml(service.description || '-')}</td>
       <td class="actions">
         <button class="button-secondary" data-action="edit-service" data-id="${service.id}">Editar</button>
         <button class="button-secondary" data-action="delete-service" data-id="${service.id}">Remover</button>
@@ -254,9 +271,9 @@ function renderAppointments() {
 
     return `
     <tr>
-      <td>${clientName}</td>
+      <td>${escapeHtml(clientName)}</td>
       <td>${new Date(appointment.appointment_date).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}</td>
-      <td>${servicesText}</td>
+      <td>${escapeHtml(servicesText)}</td>
       <td>${formatCurrency(totalPrice)}</td>
       <td>
         ${getPaymentTypeLabel(appointment.payment_type || 'dinheiro')}
@@ -274,7 +291,7 @@ function fillAppointmentServices() {
   appointmentServices.innerHTML = state.services.map((service) => `
     <label class="checkbox-item">
       <input type="checkbox" value="${service.id}" data-price="${service.price}" />
-      <span>${service.name} - ${formatCurrency(service.price)}</span>
+      <span>${escapeHtml(service.name)} - ${formatCurrency(service.price)}</span>
     </label>`).join('');
   appointmentServices.querySelectorAll('input[type="checkbox"]').forEach((checkbox) => {
     checkbox.addEventListener('change', updateTotals);
@@ -285,13 +302,13 @@ function fillAppointmentServiceFilter() {
   if (!appointmentFilterService) return;
   const selectedValue = appointmentFilterService.value;
   appointmentFilterService.innerHTML = '<option value="">Todos</option>' + state.services.map((service) => (
-    `<option value="${service.id}">${service.name}</option>`
+    `<option value="${service.id}">${escapeHtml(service.name)}</option>`
   )).join('');
   appointmentFilterService.value = selectedValue;
 }
 
 function fillClientSelect() {
-  appointmentClient.innerHTML = state.clients.map((client) => `<option value="${client.id}">${client.name}</option>`).join('');
+  appointmentClient.innerHTML = state.clients.map((client) => `<option value="${client.id}">${escapeHtml(client.name)}</option>`).join('');
 }
 
 // --- Data Loading ---

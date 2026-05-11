@@ -4,6 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Painel de Admin - Sistema de Barbearia</title>
+  <meta name="theme-color" content="#0a1128">
+  <link rel="manifest" href="/manifest.json">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   
   <!-- Fonts: Outfit -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -85,7 +89,8 @@
                 <i class="ph ph-funnel-simple"></i>
                 <select id="user-role-filter">
                   <option value="all">Todos</option>
-                  <option value="admin">Administradores</option>
+                  <option value="superadmin">Superadmins</option>
+                  <option value="admin">Admins de Barbearia</option>
                   <option value="user">Clientes</option>
                 </select>
               </div>
@@ -136,7 +141,8 @@
                 <div class="input-with-icon">
                   <i class="ph ph-shield-check"></i>
                   <select id="edit-role" required>
-                    <option value="admin">Administrador (admin)</option>
+                    <option value="superadmin">Superadmin da plataforma</option>
+                    <option value="admin">Admin da barbearia</option>
                     <option value="user">Usuário (user)</option>
                   </select>
                 </div>
@@ -160,10 +166,10 @@
 
         <section class="panel active fade-in">
           <form id="register-admin-form" class="form-card glass-panel">
-            <h3 class="form-title">Cadastrar Administrador</h3>
+            <h3 class="form-title">Cadastrar Superadmin</h3>
             <div class="form-grid">
               <div class="input-group">
-                <label for="register-admin-name">Nome Completo do Administrador</label>
+                <label for="register-admin-name">Nome Completo do Superadmin</label>
                 <div class="input-with-icon">
                   <i class="ph ph-user"></i>
                   <input id="register-admin-name" type="text" required placeholder="Ex: João Silva" />
@@ -186,7 +192,7 @@
               </div>
             </div>
             <div class="form-actions">
-              <button class="button-primary w-full" type="submit">Cadastrar Administrador <i class="ph ph-user-plus"></i></button>
+              <button class="button-primary w-full" type="submit">Cadastrar Superadmin <i class="ph ph-user-plus"></i></button>
             </div>
             <p class="message" id="register-admin-message"></p>
           </form>
@@ -295,6 +301,15 @@
     const editPassword = document.getElementById('edit-password');
     let adminUsers = [];
 
+    function escapeHtml(value) {
+      return String(value ?? '')
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#039;');
+    }
+
     async function setAdminVisible(isVisible) {
       adminLoginBox.classList.toggle('hidden', isVisible);
       adminPanel.classList.toggle('hidden', !isVisible);
@@ -335,8 +350,8 @@
           <tbody>
             ${chargeUsers.map(user => `
               <tr>
-                <td>${user.name}</td>
-                <td>${user.email}</td>
+                <td>${escapeHtml(user.name)}</td>
+                <td>${escapeHtml(user.email)}</td>
                 <td>${user.billing_days || 0} dia(s)</td>
                 <td>${user.billing_paid_recently ? 'Pago nas últimas 24h' : 'Cobrar'}</td>
                 <td>
@@ -382,9 +397,9 @@
             <tbody>
               ${filteredUsers.map(user => `
                 <tr>
-                  <td>${user.name}</td>
-                  <td>${user.email}</td>
-                  <td>${user.role}</td>
+                  <td>${escapeHtml(user.name)}</td>
+                  <td>${escapeHtml(user.email)}</td>
+                  <td>${escapeHtml(user.role)}</td>
                   <td>${new Date(user.created_at).toLocaleDateString('pt-BR')}</td>
                   <td>${user.billing_days || 0} dia(s)</td>
                   <td class="actions">
@@ -488,8 +503,8 @@
           return;
         }
 
-        if (data.user.role !== 'admin') {
-          adminLoginMessage.textContent = 'Acesso autorizado apenas para administradores.';
+        if (data.user.role !== 'superadmin') {
+          adminLoginMessage.textContent = 'Acesso autorizado apenas para superadmins.';
           return;
         }
 
@@ -566,7 +581,7 @@
 
     registerAdminForm.addEventListener('submit', async (event) => {
       event.preventDefault();
-      registerAdminMessage.textContent = 'Criando administrador...';
+      registerAdminMessage.textContent = 'Criando superadmin...';
       try {
         const name = document.getElementById('register-admin-name').value.trim();
         const email = document.getElementById('register-admin-email').value.trim();
@@ -579,7 +594,7 @@
         });
         const data = await response.json();
         if (response.ok) {
-          registerAdminMessage.textContent = 'Administrador criado com sucesso!';
+          registerAdminMessage.textContent = 'Superadmin criado com sucesso!';
           registerAdminForm.reset();
           await loadUsers();
         } else {
@@ -595,14 +610,14 @@
       event.preventDefault();
       registerMessage.textContent = 'Criando barbearia...';
       try {
-        const name = document.getElementById('register-name').value.trim();
+        const tenantName = document.getElementById('register-name').value.trim();
         const email = document.getElementById('register-email').value.trim();
         const password = document.getElementById('register-password').value.trim();
-        const response = await fetch('/api/admin/users', {
+        const response = await fetch('/api/admin/register', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
-          body: JSON.stringify({ email, password, name })
+          body: JSON.stringify({ email, password, name: tenantName, tenantName })
         });
         const data = await response.json();
         if (response.ok) {

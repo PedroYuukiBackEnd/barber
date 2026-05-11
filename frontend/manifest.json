@@ -1,0 +1,11 @@
+{
+  "name": "Sistema Barber",
+  "short_name": "BarberApp",
+  "description": "Aplicativo de gerenciamento para barbearias.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a1128",
+  "theme_color": "#0a1128",
+  "orientation": "portrait",
+  "scope": "/"
+}

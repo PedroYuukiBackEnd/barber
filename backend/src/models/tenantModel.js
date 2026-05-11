@@ -3,7 +3,7 @@ const db = require('../config/db');
 function createTenant(name) {
   return new Promise((resolve, reject) => {
     db.get(
-      'INSERT INTO tenants (name) VALUES (?) RETURNING id, name, theme_color, logo_url',
+      'INSERT INTO tenants (name) VALUES (?) RETURNING id, name, theme_color, border_color, logo_url',
       [name],
       (err, row) => {
         if (err) return reject(err);
@@ -15,7 +15,7 @@ function createTenant(name) {
 
 function getTenantById(id) {
   return new Promise((resolve, reject) => {
-    db.get('SELECT id, name, theme_color, logo_url FROM tenants WHERE id = ?', [id], (err, row) => {
+    db.get('SELECT id, name, theme_color, border_color, logo_url FROM tenants WHERE id = ?', [id], (err, row) => {
       if (err) reject(err);
       else resolve(row);
     });
@@ -33,6 +33,10 @@ function updateTenant(id, fields) {
     if (fields.theme_color) {
       values.push(fields.theme_color);
       updates.push('theme_color = ?');
+    }
+    if (fields.border_color) {
+      values.push(fields.border_color);
+      updates.push('border_color = ?');
     }
     if (fields.logo_url) {
       values.push(fields.logo_url);
