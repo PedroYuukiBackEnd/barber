@@ -10,6 +10,7 @@ const {
 } = require('../models/appointmentModel');
 const { getClientById } = require('../models/clientModel');
 const { listServicesByIds } = require('../models/serviceModel');
+const { getTenantById } = require('../models/tenantModel');
 const { normalizeAttachment } = require('../utils/attachment');
 
 function normalizePaymentProof(paymentStatus, paymentProofName, paymentProofData) {
@@ -109,6 +110,15 @@ async function deleteAppointmentHandler(req, res, next) {
 async function finishAppointmentHandler(req, res, next) {
   try {
     const appointmentId = Number(req.params.id);
+    const existing = await getAppointmentById(appointmentId, req.user.tenant_id);
+    if (!existing) {
+      return res.status(404).json({ message: 'Agendamento nao encontrado.' });
+    }
+    const tenant = await getTenantById(req.user.tenant_id);
+    const requirePixProof = Boolean(tenant?.require_pix_proof_to_finish);
+    if (requirePixProof && existing.payment_type === 'pix' && (existing.payment_status !== 'ja pago' || !existing.payment_proof_data)) {
+      return res.status(400).json({ message: 'Para finalizar trabalho pago via PIX, marque como ja pago e anexe o comprovante no agendamento.' });
+    }
     const history = await finishAppointment(appointmentId, req.user.tenant_id);
     if (!history) {
       return res.status(404).json({ message: 'Agendamento nao encontrado.' });

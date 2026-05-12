@@ -140,8 +140,8 @@ async function getTenant(req, res, next) {
 
 async function updateTenantSettings(req, res, next) {
   try {
-    const { name, theme_color, border_color } = req.body;
-    const tenant = await updateTenant(req.user.tenant_id, { name, theme_color, border_color });
+    const { name, theme_color, border_color, require_pix_proof_to_finish } = req.body;
+    const tenant = await updateTenant(req.user.tenant_id, { name, theme_color, border_color, require_pix_proof_to_finish });
     res.json({ tenant });
   } catch (error) {
     next(error);

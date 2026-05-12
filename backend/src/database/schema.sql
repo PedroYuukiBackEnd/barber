@@ -4,6 +4,7 @@ CREATE TABLE IF NOT EXISTS tenants (
   theme_color TEXT NOT NULL DEFAULT '#d4d4d8',
   border_color TEXT NOT NULL DEFAULT '#3f3f46',
   logo_url TEXT DEFAULT '',
+  require_pix_proof_to_finish BOOLEAN NOT NULL DEFAULT FALSE,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -18,6 +19,8 @@ CREATE TABLE IF NOT EXISTS users (
   admin_notes TEXT DEFAULT '',
   billing_cycle_started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   billing_paid_at TIMESTAMP DEFAULT NULL,
+  billing_proof_name TEXT DEFAULT '',
+  billing_proof_data TEXT DEFAULT '',
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 

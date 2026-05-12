@@ -115,6 +115,7 @@ const settingsMessage = document.getElementById('settings-message');
 const tenantNameInput = document.getElementById('tenant-name-input');
 const primaryColorInput = document.getElementById('primary-color-input');
 const borderColorInput = document.getElementById('border-color-input');
+const requirePixProofInput = document.getElementById('require-pix-proof-input');
 const recommendationForm = document.getElementById('recommendation-form');
 const recommendationMessage = document.getElementById('recommendation-message');
 const recommendationClientName = document.getElementById('recommendation-client-name');
@@ -175,11 +176,19 @@ function applyHudColors({ primaryColor, borderColor }) {
     document.documentElement.style.removeProperty('--primary-color');
   }
 
-  if (borderColor && borderColor !== DEFAULT_BORDER_COLOR) {
+    if (borderColor && borderColor !== DEFAULT_BORDER_COLOR) {
     document.documentElement.style.setProperty('--border-color', borderColor);
   } else {
     document.documentElement.style.removeProperty('--border-color');
   }
+}
+
+function applyTenantSettings(settings) {
+  if (!settings) return;
+  state.tenant = { ...(state.tenant || {}), ...settings };
+  if (tenantNameTitle && settings.name) tenantNameTitle.textContent = settings.name;
+  if (tenantNameInput && settings.name) tenantNameInput.value = settings.name;
+  if (requirePixProofInput) requirePixProofInput.checked = Boolean(settings.require_pix_proof_to_finish);
 }
 
 
@@ -645,6 +654,7 @@ async function handleLogin(event) {
     }
     state.user = data.user;
     state.tenant = data.tenant;
+    applyTenantSettings(data.tenant);
     
     loginForm.reset();
     loginMessage.textContent = '';
@@ -913,6 +923,11 @@ async function handleTableClick(event) {
     }
     if (action === 'finish-appointment') {
       if (confirm('Marcar este trabalho como finalizado? O agendamento será removido da lista.')) {
+        const appointment = state.appointments.find((item) => Number(item.id) === Number(id));
+        if (state.tenant?.require_pix_proof_to_finish && appointment?.payment_type === 'pix' && (appointment.payment_status !== 'ja pago' || !appointment.payment_proof_data)) {
+          alert('Para finalizar trabalho pago via PIX, marque como já pago e anexe o comprovante no agendamento.');
+          return;
+        }
         await apiFetch(`/api/appointments/${id}/finish`, 'POST');
         state.appointments = state.appointments.filter((appointment) => Number(appointment.id) !== Number(id));
         renderAppointments();
@@ -1052,10 +1067,7 @@ async function loadTenantAppearanceSettings() {
 
     const settings = data.tenant || data;
 
-    if (settings.name) {
-      if (tenantNameTitle) tenantNameTitle.textContent = settings.name;
-    }
-    if (tenantNameInput && settings.name) tenantNameInput.value = settings.name;
+    applyTenantSettings(settings);
 
     applyHudColors({
       primaryColor: settings.theme_color,
@@ -1085,6 +1097,7 @@ function bindSettingsEvents() {
       name: tenantNameInput?.value?.trim(),
       theme_color: primaryColorInput?.value,
       border_color: borderColorInput?.value,
+      require_pix_proof_to_finish: Boolean(requirePixProofInput?.checked),
     };
 
     applyHudColors({
@@ -1103,6 +1116,8 @@ function bindSettingsEvents() {
       });
 
       if (res2.ok) {
+        const data = await res2.json().catch(() => null);
+        if (data?.tenant) applyTenantSettings(data.tenant);
         if (settingsMessage) settingsMessage.textContent = 'Configurações salvas com sucesso.';
       } else {
         if (settingsMessage)
@@ -1165,6 +1180,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     }
     state.user = data.user;
     state.tenant = data.tenant;
+    applyTenantSettings(data.tenant);
     showApp();
     await loadAppData();
     await loadTenantAppearanceSettings();

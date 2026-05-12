@@ -97,6 +97,16 @@ async function ensureTenantColumns() {
   if (!column) {
     await run("ALTER TABLE tenants ADD COLUMN border_color TEXT NOT NULL DEFAULT '#3f3f46'");
   }
+  const pixProofColumn = await get(
+     `SELECT column_name
+     FROM information_schema.columns
+     WHERE table_schema = current_schema()
+       AND table_name = 'tenants'
+       AND column_name = 'require_pix_proof_to_finish'`
+  );
+  if (!pixProofColumn) {
+    await run('ALTER TABLE tenants ADD COLUMN require_pix_proof_to_finish BOOLEAN NOT NULL DEFAULT FALSE');
+  }
   await run("UPDATE tenants SET theme_color = '#d4d4d8' WHERE theme_color = '#1a73e8'");
 }
 
@@ -113,6 +123,12 @@ async function ensureUserColumns() {
   }
   if (!columnNames.includes('billing_type')) {
     await run("ALTER TABLE users ADD COLUMN billing_type TEXT NOT NULL DEFAULT 'subscription'");
+  }
+  if (!columnNames.includes('billing_proof_name')) {
+    await run("ALTER TABLE users ADD COLUMN billing_proof_name TEXT DEFAULT ''");
+  }
+  if (!columnNames.includes('billing_proof_data')) {
+    await run("ALTER TABLE users ADD COLUMN billing_proof_data TEXT DEFAULT ''");
   }
 }
 

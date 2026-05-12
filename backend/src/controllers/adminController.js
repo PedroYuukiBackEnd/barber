@@ -2,6 +2,7 @@ const db = require('../config/db');
 const bcrypt = require('bcrypt');
 const { createTenant } = require('../models/tenantModel');
 const { createUser, updateUser } = require('../models/userModel');
+const { normalizeAttachment } = require('../utils/attachment');
 
 const ALLOWED_ROLES = ['superadmin', 'user'];
 const ALLOWED_BILLING_TYPES = ['subscription', 'full_payment'];
@@ -45,6 +46,12 @@ async function ensureBillingColumns() {
   if (!columnNames.includes('billing_type')) {
     await runQuery("ALTER TABLE users ADD COLUMN billing_type TEXT NOT NULL DEFAULT 'subscription'");
   }
+  if (!columnNames.includes('billing_proof_name')) {
+    await runQuery("ALTER TABLE users ADD COLUMN billing_proof_name TEXT DEFAULT ''");
+  }
+  if (!columnNames.includes('billing_proof_data')) {
+    await runQuery("ALTER TABLE users ADD COLUMN billing_proof_data TEXT DEFAULT ''");
+  }
 }
 
 function buildUserBillingInfo(user) {
@@ -69,6 +76,8 @@ function buildUserBillingInfo(user) {
     billing_is_due: billingDays >= 30,
     billing_paid_recently: paidRecently,
     billing_type: user.billing_type || 'subscription',
+    billing_proof_name: user.billing_proof_name || '',
+    billing_proof_data: user.billing_proof_data || '',
     show_billing_charge: (user.billing_type || 'subscription') === 'subscription' && user.role !== 'superadmin' && (billingDays >= 30 || paidRecently),
   };
 }
@@ -84,6 +93,7 @@ async function getUsers(req, res, next) {
     const users = await allQuery(
       `SELECT u.id, u.tenant_id, u.name, u.email, u.role, u.created_at,
               u.billing_type, u.admin_notes, u.billing_cycle_started_at, u.billing_paid_at,
+              u.billing_proof_name, u.billing_proof_data,
               FLOOR(EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - COALESCE(u.billing_cycle_started_at, u.created_at))) / 86400)::int AS billing_elapsed_days,
               CASE
                 WHEN u.billing_paid_at IS NULL THEN NULL
@@ -187,19 +197,22 @@ async function markUserBillingPaid(req, res, next) {
   try {
     await ensureBillingColumns();
     const { id } = req.params;
-    const { paid } = req.body;
+    const { paid, billing_proof_name, billing_proof_data } = req.body;
+    const { attachmentName, attachmentData } = normalizeAttachment(billing_proof_name, billing_proof_data, {
+      fallbackName: 'comprovante-cobranca',
+    });
 
     if (paid) {
       await runQuery(
-        'UPDATE users SET billing_cycle_started_at = CURRENT_TIMESTAMP, billing_paid_at = CURRENT_TIMESTAMP WHERE id = ?',
-        [id]
+        'UPDATE users SET billing_cycle_started_at = CURRENT_TIMESTAMP, billing_paid_at = CURRENT_TIMESTAMP, billing_proof_name = ?, billing_proof_data = ? WHERE id = ?',
+        [attachmentName, attachmentData, id]
       );
     } else {
-      await runQuery('UPDATE users SET billing_paid_at = NULL WHERE id = ?', [id]);
+      await runQuery("UPDATE users SET billing_paid_at = NULL, billing_proof_name = '', billing_proof_data = '' WHERE id = ?", [id]);
     }
 
     const users = await allQuery(
-      `SELECT id, name, email, role, billing_type, created_at, billing_cycle_started_at, billing_paid_at,
+      `SELECT id, name, email, role, billing_type, billing_proof_name, billing_proof_data, created_at, billing_cycle_started_at, billing_paid_at,
               FLOOR(EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - COALESCE(billing_cycle_started_at, created_at))) / 86400)::int AS billing_elapsed_days,
               CASE
                 WHEN billing_paid_at IS NULL THEN NULL
