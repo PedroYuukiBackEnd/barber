@@ -14,3 +14,16 @@ android {
         versionName "1.0.0"
     }
 }
+
+tasks.register("copyDebugApkToDist", Copy) {
+    dependsOn("assembleDebug")
+    from("$buildDir/outputs/apk/debug/app-debug.apk")
+    into("$rootDir/dist")
+    rename { "SistemaBarber-standalone-debug.apk" }
+}
+
+afterEvaluate {
+    tasks.named("assembleDebug") {
+        finalizedBy("copyDebugApkToDist")
+    }
+}
