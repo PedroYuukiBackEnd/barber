@@ -483,6 +483,9 @@
     const editPassword = document.getElementById('edit-password');
     const editAdminNotes = document.getElementById('edit-admin-notes');
     const registerBillingTypeGroup = document.getElementById('register-billing-type')?.closest('.input-group');
+    const SUPABASE_URL = 'https://nvgpylhbwripujfwlskg.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im52Z3B5bGhid3JpcHVqZndsc2tnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg3ODgwNzEsImV4cCI6MjA5NDM2NDA3MX0.PDATmodiolnySnRnZKXAHVeyNsHwSMxnBekGuBs0uY8';
+    const SUPABASE_CLIENTES_ENDPOINT = `${SUPABASE_URL}/rest/v1/clientes`;
     let adminUsers = [];
     let adminRecommendations = [];
     let adminBugReports = [];
@@ -501,6 +504,62 @@
       if (!data) return '-';
       const label = name || 'Abrir anexo';
       return `<a class="proof-link" href="${data}" target="_blank" rel="noopener" download="${escapeHtml(label)}"><i class="ph ph-paperclip"></i> ${escapeHtml(label)}</a>`;
+    }
+
+    function addDaysFromNow(days) {
+      const date = new Date();
+      date.setDate(date.getDate() + days);
+      return date.toISOString().slice(0, 10);
+    }
+
+    function remoteLicenseCodeFromAccess(access) {
+      return String(access || '').trim();
+    }
+
+    function remoteLicensePayload({ tenantName, access, status = 'ativo', billingType = 'subscription', venceEm = null }) {
+      return {
+        nome: tenantName,
+        codigo_licenca: remoteLicenseCodeFromAccess(access),
+        status,
+        vence_em: billingType === 'full_payment' ? null : (venceEm || addDaysFromNow(30)),
+      };
+    }
+
+    async function supabaseRequest(path, options = {}) {
+      const response = await fetch(`${SUPABASE_CLIENTES_ENDPOINT}${path}`, {
+        ...options,
+        headers: {
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json',
+          Prefer: 'return=representation',
+          ...(options.headers || {}),
+        },
+      });
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        const message = data?.message || data?.details || `Supabase retornou erro ${response.status}.`;
+        throw new Error(message);
+      }
+      return data;
+    }
+
+    async function upsertRemoteLicense(payload) {
+      if (!payload.codigo_licenca) return;
+      await supabaseRequest('?on_conflict=codigo_licenca', {
+        method: 'POST',
+        headers: { Prefer: 'resolution=merge-duplicates,return=representation' },
+        body: JSON.stringify(payload),
+      });
+    }
+
+    async function updateRemoteLicenseByCode(code, patch) {
+      const licenseCode = remoteLicenseCodeFromAccess(code);
+      if (!licenseCode) return;
+      await supabaseRequest(`?codigo_licenca=eq.${encodeURIComponent(licenseCode)}`, {
+        method: 'PATCH',
+        body: JSON.stringify(patch),
+      });
     }
 
     function readAdminAttachmentFile(input) {
@@ -963,6 +1022,7 @@
 
     async function handleBillingPaidChange(checkbox) {
       const userId = checkbox.dataset.userId;
+      const user = adminUsers.find((item) => String(item.id) === String(userId));
       checkbox.disabled = true;
       try {
         const proofInput = document.querySelector(`.billing-proof-input[data-user-id="${userId}"]`);
@@ -984,10 +1044,16 @@
           checkbox.disabled = false;
           return;
         }
+        if (user?.role !== 'superadmin') {
+          await updateRemoteLicenseByCode(user.email, {
+            status: checkbox.checked ? 'ativo' : 'vencido',
+            vence_em: checkbox.checked ? addDaysFromNow(30) : new Date().toISOString().slice(0, 10),
+          });
+        }
         adminLoginMessage.textContent = checkbox.checked ? 'Pagamento marcado. Ele sai da cobrança após 24 horas e volta em 30 dias.' : 'Pagamento desmarcado.';
         await loadUsers();
       } catch (error) {
-        adminLoginMessage.textContent = 'Erro ao atualizar cobrança.';
+        adminLoginMessage.textContent = `Erro ao atualizar cobrança: ${error.message || 'falha desconhecida.'}`;
         checkbox.checked = !checkbox.checked;
         checkbox.disabled = false;
         console.error(error);
@@ -1074,16 +1140,20 @@
       const confirmed = confirm('Deseja excluir este cadastro? Esta ação não pode ser desfeita.');
       if (!confirmed) return;
       try {
+        const user = adminUsers.find((item) => String(item.id) === String(userId));
         const response = await fetch(`/api/admin/users/${userId}`, { method: 'DELETE', credentials: 'include' });
         const data = await response.json().catch(() => null);
         if (!response.ok) {
           adminLoginMessage.textContent = data?.message || 'Erro ao excluir usuário.';
           return;
         }
+        if (user?.role !== 'superadmin') {
+          await updateRemoteLicenseByCode(user.email, { status: 'bloqueado' });
+        }
         adminLoginMessage.textContent = 'Cadastro excluído com sucesso.';
         await loadUsers();
       } catch (error) {
-        adminLoginMessage.textContent = 'Erro ao excluir usuário.';
+        adminLoginMessage.textContent = `Erro ao excluir usuário: ${error.message || 'falha desconhecida.'}`;
         console.error(error);
       }
     };
@@ -1147,6 +1217,7 @@
       editMessage.textContent = 'Salvando alterações...';
       try {
         const id = editUserId.value;
+        const previousUser = adminUsers.find((item) => String(item.id) === String(id));
         const name = editName.value.trim();
         const email = editAccess.value.trim();
         const role = editRole.value;
@@ -1165,6 +1236,15 @@
         });
         const data = await response.json().catch(() => null);
         if (response.ok) {
+          if (role !== 'superadmin') {
+            await updateRemoteLicenseByCode(previousUser?.email || email, remoteLicensePayload({
+              tenantName: name,
+              access: email,
+              status: Number(billingDays || 0) >= 30 ? 'vencido' : 'ativo',
+              billingType,
+              venceEm: billingDays !== '' ? addDaysFromNow(Math.max(0, 30 - Number(billingDays || 0))) : null,
+            }));
+          }
           editMessage.textContent = 'Atualizado com sucesso!';
           await loadUsers();
           closeEditSection();
@@ -1172,7 +1252,7 @@
           editMessage.textContent = data?.message || `Erro ao atualizar usuário. (${response.status})`;
         }
       } catch (error) {
-        editMessage.textContent = 'Erro ao atualizar usuário.';
+        editMessage.textContent = `Erro ao atualizar usuário: ${error.message || 'falha desconhecida.'}`;
         console.error(error);
       }
     });
@@ -1228,6 +1308,12 @@
         });
         const data = await response.json();
         if (response.ok) {
+          await upsertRemoteLicense(remoteLicensePayload({
+            tenantName,
+            access: email,
+            status: 'ativo',
+            billingType,
+          }));
           registerMessage.textContent = 'Barbearia criada com sucesso!';
           registerForm.reset();
           await loadUsers();
@@ -1235,7 +1321,7 @@
           registerMessage.textContent = data.message;
         }
       } catch (error) {
-        registerMessage.textContent = 'Erro ao criar barbearia.';
+        registerMessage.textContent = `Erro ao criar barbearia: ${error.message || 'falha desconhecida.'}`;
         console.error(error);
       }
     });
