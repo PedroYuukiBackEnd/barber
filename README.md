@@ -1,76 +1,138 @@
 # Sistema Barber
 
-Sistema web para gerenciar barbearias com login, clientes, servicos, agendamentos, cobranca e painel de administracao da plataforma.
+Sistema local para gerenciar barbearias com login, clientes, servicos, agendamentos, historico, cobranca e painel de administracao.
 
-## Pronto para operar
+## Como funciona agora
 
 - Backend Node.js + Express.
-- Banco PostgreSQL via `DATABASE_URL`.
+- Banco local SQLite em `backend/database.sqlite`.
+- Frontend servido pelo proprio backend em `http://localhost:4000`.
+- Funciona em PC/notebook pelo navegador.
+- Funciona em Android/iOS pelo navegador acessando o IP do computador na mesma rede.
+- Pode ser instalado como PWA quando aberto pelo navegador do celular.
 - Autenticacao por cookie JWT.
 - Separacao de papeis:
   - `superadmin`: dono da plataforma, acessa `/admin.html`.
-  - `admin`: dono/admin de uma barbearia, acessa apenas a propria barbearia.
   - `user`: usuario comum da barbearia.
 - Dados de clientes, servicos e agendamentos isolados por `tenant_id`.
-- Cadastro publico desativado por padrao em producao.
-- Formulario de recomendacoes dentro de Configuracoes, vinculado ao usuario e a barbearia logados.
-- Formulario de reports de bugs no painel do cliente, visivel para o superadmin no painel admin.
-- Painel admin com notificacoes de clientes a cobrar, reports de bugs e recomendacoes.
-- Notas internas por barbearia/usuario no cadastro e edicao.
-- Cadastro de barbearia com tipo de cobranca: assinatura ou pagamento completo.
-- Aviso de renovacao de assinatura no painel do cliente ao atingir 30 dias.
-- Historico de servicos finalizados com filtros por data, horario, valor, pagamento e servico.
+- Cadastro publico desativado por padrao.
 
-## Variaveis de ambiente
-
-Configure no Render ou no seu provedor:
-
-```env
-DATABASE_URL=postgresql://usuario:senha@host:5432/banco
-JWT_SECRET=troque_por_uma_chave_grande_e_segura
-FRONTEND_URL=https://seu-app.onrender.com
-PORT=4000
-NODE_ENV=production
-DATABASE_SSL=false
-ENABLE_PUBLIC_REGISTRATION=false
-DEFAULT_SUPERADMIN_NAME=Dono da Plataforma
-DEFAULT_SUPERADMIN_EMAIL=seu-acesso-admin
-DEFAULT_SUPERADMIN_PASSWORD=troque_por_uma_senha_forte
-```
-
-Use `DATABASE_SSL=true` se seu banco exigir SSL externo, como Neon ou Supabase.
-
-## Render
-
-Configuracao recomendada:
-
-```text
-Root Directory: backend
-Build Command: npm install
-Start Command: npm start
-```
-
-Depois do primeiro deploy, entre em `/admin.html` com o `DEFAULT_SUPERADMIN_EMAIL` e `DEFAULT_SUPERADMIN_PASSWORD`, crie as barbearias dos clientes pelo painel e entregue o acesso de cada uma. O cadastro de barbearia criado pelo painel recebe role `user`.
-
-Ao cadastrar uma barbearia, informe:
-
-- Nome da barbearia: nome que aparecera no sistema do cliente.
-- Nome completo do cliente/cabeleireiro: nome do usuario dono da barbearia.
-- Acesso e senha: credenciais que o cliente usara para entrar.
-
-## Desenvolvimento local
+## Instalar
 
 ```bash
 cd backend
 npm install
+npm run db:init
 npm start
 ```
 
-Para rodar localmente, crie `backend/.env` com as variaveis acima apontando para um PostgreSQL de teste. Se usar Neon localmente, mantenha `DATABASE_SSL=true`, `NODE_ENV=development` e `FRONTEND_URL=http://localhost:4000`.
-
-Depois abra:
+Depois abra no computador:
 
 ```text
 http://localhost:4000
 http://localhost:4000/admin.html
 ```
+
+## Gerar executavel Windows
+
+```bash
+cd backend
+npm run build
+```
+
+O pacote fica em:
+
+```text
+backend/dist
+```
+
+Para entregar em um PC Windows, copie a pasta `backend/dist` inteira. Ela contem:
+
+- `server.exe`: aplicativo local.
+- `frontend/`: telas do sistema.
+- `.env`: configuracao local.
+- `database.sqlite`: banco criado no primeiro uso.
+
+Execute `server.exe` e abra:
+
+```text
+http://localhost:4000
+```
+
+Em uma etapa futura, esse executavel pode ser colocado dentro de um instalador com atalho no menu iniciar.
+
+## APK, iOS e celulares
+
+O sistema atual roda como aplicativo local no computador e pode ser acessado por celulares na mesma rede. Para um APK Android instalado, existem dois caminhos:
+
+- APK cliente: o app Android abre a interface instalada e conecta no servidor local do computador pelo IP da rede. E o caminho mais simples para usar celular junto com o PC da barbearia.
+- APK standalone: o app Android roda banco e regras de negocio dentro do proprio celular. Isso exige uma versao mobile separada, porque o backend atual e Node.js local para PC.
+
+No iPhone, a distribuicao nativa e `.ipa`/TestFlight/App Store, nao `.dmg`. `.dmg` e formato de instalador para macOS.
+
+## Atualizacoes e localhost
+
+Mesmo entregando por executavel ou APK, voce pode continuar testando atualizacoes em `localhost`.
+
+Fluxo recomendado:
+
+1. Crie uma branch para a atualizacao.
+2. Rode e teste em `localhost`.
+3. Gere o pacote com `npm run build`.
+4. Teste o pacote gerado em `backend/dist`.
+5. Entregue a nova versao ao cliente.
+
+## Acesso inicial
+
+O primeiro superadmin local e criado pelo `npm run db:init` usando as variaveis do `backend/.env`:
+
+```env
+DEFAULT_SUPERADMIN_EMAIL=localadmin
+DEFAULT_SUPERADMIN_PASSWORD=localadmin123
+```
+
+Troque essas credenciais antes de entregar o sistema para um cliente.
+
+## Usar no celular
+
+1. Deixe o computador e o celular na mesma rede Wi-Fi.
+2. Descubra o IP do computador.
+3. No celular, abra:
+
+```text
+http://IP-DO-COMPUTADOR:4000
+```
+
+Exemplo:
+
+```text
+http://192.168.0.10:4000
+```
+
+Se o Windows bloquear, libere a porta `4000` no firewall para rede privada.
+
+## Variaveis locais
+
+Arquivo: `backend/.env`
+
+```env
+SQLITE_DATABASE_PATH=./database.sqlite
+JWT_SECRET=troque_por_uma_chave_local_grande_e_segura
+FRONTEND_URL=http://localhost:4000
+PORT=4000
+NODE_ENV=development
+ENABLE_PUBLIC_REGISTRATION=false
+DEFAULT_SUPERADMIN_NAME=Admin Local
+DEFAULT_SUPERADMIN_EMAIL=localadmin
+DEFAULT_SUPERADMIN_PASSWORD=localadmin123
+```
+
+## Backup
+
+Para backup local, copie este arquivo com o sistema parado:
+
+```text
+backend/database.sqlite
+```
+
+Esse arquivo contem clientes, servicos, agendamentos, historico, usuarios e anexos.

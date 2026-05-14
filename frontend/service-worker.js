@@ -1,4 +1,4 @@
-const CACHE_NAME = 'sistema-barber-pwa-v7';
+const CACHE_NAME = 'sistema-barber-pwa-local-v1';
 const ASSETS = [
   '/',
   '/index.html',

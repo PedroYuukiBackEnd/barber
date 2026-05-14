@@ -1,8 +1,8 @@
-const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const db = require('../config/db');
 const { createTenant, getTenantById, updateTenant } = require('../models/tenantModel');
 const { getUserByEmail, getUserByEmailOrName, createUser, getUserById } = require('../models/userModel');
+const { hashPassword, verifyPassword } = require('../utils/password');
 
 const TOKEN_NAME = 'token';
 
@@ -22,11 +22,12 @@ function sendToken(res, token) {
 }
 
 function buildUserBillingInfo(user) {
-  const billingDays = Number(user.billing_elapsed_days || 0);
-  const paidHours = user.billing_paid_age_hours === null || user.billing_paid_age_hours === undefined
-    ? null
-    : Number(user.billing_paid_age_hours);
-  const paidRecently = Number.isFinite(paidHours) && paidHours >= 0 && paidHours < 24;
+  const now = Date.now();
+  const dayMs = 24 * 60 * 60 * 1000;
+  const cycleStart = new Date(user.billing_cycle_started_at || user.created_at).getTime();
+  const paidAt = user.billing_paid_at ? new Date(user.billing_paid_at).getTime() : null;
+  const billingDays = Number.isNaN(cycleStart) ? 0 : Math.max(0, Math.floor((now - cycleStart) / dayMs));
+  const paidRecently = Boolean(paidAt && (now - paidAt) >= 0 && (now - paidAt) < dayMs);
   const billingType = user.billing_type || 'subscription';
 
   return {
@@ -45,12 +46,7 @@ function buildUserBillingInfo(user) {
 
 async function getUserWithBilling(userId) {
   return db.get(
-    `SELECT id, tenant_id, name, email, role, billing_type, created_at, billing_cycle_started_at, billing_paid_at,
-            FLOOR(EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - COALESCE(billing_cycle_started_at, created_at))) / 86400)::int AS billing_elapsed_days,
-            CASE
-              WHEN billing_paid_at IS NULL THEN NULL
-              ELSE EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - billing_paid_at)) / 3600
-            END AS billing_paid_age_hours
+    `SELECT id, tenant_id, name, email, role, billing_type, created_at, billing_cycle_started_at, billing_paid_at
      FROM users
      WHERE id = ?`,
     [userId]
@@ -73,7 +69,7 @@ async function register(req, res, next) {
       return res.status(400).json({ message: 'Email já cadastrado.' });
     }
 
-    const passwordHash = await bcrypt.hash(password, 12);
+    const passwordHash = hashPassword(password);
     const tenant = await createTenant(tenantName);
     const user = await createUser(tenant.id, name, email, passwordHash, 'user');
 
@@ -98,7 +94,7 @@ async function login(req, res, next) {
       return res.status(401).json({ message: 'Credenciais inválidas.' });
     }
 
-    const validPassword = await bcrypt.compare(password, user.password_hash);
+    const validPassword = verifyPassword(password, user.password_hash);
     if (!validPassword) {
       return res.status(401).json({ message: 'Credenciais inválidas.' });
     }

@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>@pyuuki_</title>
+  <meta name="theme-color" content="#0a1128" />
+  <link rel="manifest" href="/manifest.json" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  
+  <!-- Fonts: Outfit -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Icons: Phosphor -->
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+  
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <!-- Área de Login -->
+  <section id="auth-section" class="auth-wrapper">
+    <!-- Botão Admin Discreto -->
+    <button class="admin-access-btn" id="admin-access-btn" title="Acesso Admin" style="position: absolute; top: 20px; right: 20px; background: rgba(255,255,255,0.1); border: none; border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; color: var(--primary-color); cursor: pointer; opacity: 0.7; transition: opacity 0.3s;">
+      <i class="ph ph-shield"></i>
+    </button>
+    <!-- Card de Login -->
+    <div class="auth-card glass-panel" id="login-card">
+      <div class="auth-header">
+        <i class="ph ph-scissors auth-icon"></i>
+        <h2>Entrar no Sistema</h2>
+        <p>Acesse sua barbearia</p>
+      </div>
+      <form id="login-form">
+        <div class="input-group" style="margin-bottom: 16px;">
+          <label for="login-email">Acesso</label>
+          <div class="input-with-icon">
+            <i class="ph ph-key"></i>
+            <input id="login-email" type="text" required placeholder="Digite seu acesso" />
+          </div>
+        </div>
+        <div class="input-group" style="margin-bottom: 24px;">
+          <label for="login-password">Senha de Acesso</label>
+          <div class="input-with-icon">
+            <i class="ph ph-lock-key"></i>
+            <input id="login-password" type="password" required placeholder="Digite sua senha" class="has-toggle" />
+            <i class="ph ph-eye toggle-password" data-target="login-password"></i>
+          </div>
+        </div>
+        <button class="button-primary w-full" type="submit">Entrar <i class="ph ph-sign-in"></i></button>
+        <p class="message" id="login-message"></p>
+      </form>
+    </div>
+  </section>
+
+  <!-- Área do Aplicativo (Dashboard) -->
+  <section id="app-section" class="app-layout hidden">
+    
+    <!-- Menu Lateral (Sidebar) -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <div class="logo-area">
+          <div class="logo-icon-wrapper">
+            <i class="ph ph-scissors logo-icon"></i>
+          </div>
+          <div>
+            <h1 class="logo-text" id="tenant-name">Carregando...</h1>
+            <span class="tenant-badge">@pyuuki_</span>
+          </div>
+        </div>
+        <button class="icon-button close-sidebar-btn" id="close-sidebar">
+          <i class="ph ph-x"></i>
+        </button>
+      </div>
+      
+      <nav class="sidebar-nav">
+        <button class="nav-button active" data-section="clients-panel">
+          <i class="ph ph-users"></i> Clientes
+        </button>
+        <button class="nav-button" data-section="services-panel">
+          <i class="ph ph-briefcase"></i> Serviços
+        </button>
+        <button class="nav-button" data-section="appointments-panel">
+          <i class="ph ph-calendar-check"></i> Agendamentos
+        </button>
+        <button class="nav-button" data-section="history-panel">
+          <i class="ph ph-clock-counter-clockwise"></i> Histórico
+        </button>
+        <button class="nav-button" data-section="bugs-panel">
+          <i class="ph ph-bug"></i> Relatar Problema
+        </button>
+        <button class="nav-button" data-section="settings-panel">
+          <i class="ph ph-sliders-horizontal"></i> Configurações
+        </button>
+      </nav>
+
+      
+      <div class="sidebar-footer">
+        <button class="button-logout" id="logout-button">
+          <i class="ph ph-sign-out"></i> Sair do sistema
+        </button>
+      </div>
+    </aside>
+
+    <!-- Overlay Mobile -->
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+    <!-- Conteúdo Principal -->
+    <main class="main-content">
+      
+      <!-- Topbar (Mobile) -->
+      <header class="topbar">
+        <button class="icon-button menu-toggle" id="menu-toggle">
+          <i class="ph ph-list"></i>
+        </button>
+        <div class="topbar-logo">
+          <i class="ph ph-scissors"></i>
+          <h2 class="topbar-title">Dashboard</h2>
+        </div>
+        <div style="width: 40px;"></div> <!-- Spacer para centralizar -->
+      </header>
+
+      <div class="content-wrapper">
+        <!-- Painel de Clientes -->
+        <section id="clients-panel" class="panel active fade-in">
+          <div class="panel-header">
+            <div class="panel-title">
+              <h2><i class="ph ph-users"></i> Gestão de Clientes</h2>
+              <p>Gerencie seus clientes e mantenha o contato.</p>
+            </div>
+            <button class="button-primary" id="new-client">
+              <i class="ph ph-plus-circle"></i> Novo Cliente
+            </button>
+          </div>
+
+          <form id="client-form" class="form-card glass-panel hidden">
+            <h3 class="form-title">Dados do Cliente</h3>
+            <input type="hidden" id="client-id" />
+            <div class="form-grid">
+              <div class="input-group">
+                <label>Nome Completo</label>
+                <input id="client-name" type="text" required placeholder="Ex: João da Silva" />
+              </div>
+              <div class="input-group">
+                <label>Telefone</label>
+                <input id="client-phone" type="tel" placeholder="(00) 00000-0000" />
+              </div>
+              <div class="input-group full-width">
+                <label>Observações</label>
+                <textarea id="client-notes" placeholder="Preferências de corte, restrições, etc."></textarea>
+              </div>
+            </div>
+            <div class="form-actions">
+              <button class="button-secondary" type="button" id="cancel-client">Cancelar</button>
+              <button class="button-primary" type="submit">Salvar Cliente</button>
+            </div>
+          </form>
+
+          <div class="table-card glass-panel">
+            <div class="table-wrapper">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Cliente</th>
+                    <th>Telefone</th>
+                    <th>Observações</th>
+                    <th>Ações</th>
+                  </tr>
+                </thead>
+                <tbody id="clients-table"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- Painel de Serviços -->
+        <section id="services-panel" class="panel hidden fade-in">
+          <div class="panel-header">
+            <div class="panel-title">
+              <h2><i class="ph ph-briefcase"></i> Gestão de Serviços</h2>
+              <p>Cadastre os serviços e seus respectivos valores.</p>
+            </div>
+            <button class="button-primary" id="new-service">
+              <i class="ph ph-plus-circle"></i> Novo Serviço
+            </button>
+          </div>
+
+          <form id="service-form" class="form-card glass-panel hidden">
+            <h3 class="form-title">Dados do Serviço</h3>
+            <input type="hidden" id="service-id" />
+            <div class="form-grid">
+              <div class="input-group">
+                <label>Nome do Serviço</label>
+                <input id="service-name" type="text" required placeholder="Ex: Corte Degradê" />
+              </div>
+              <div class="input-group">
+                <label>Preço (R$)</label>
+                <input id="service-price" type="number" step="0.01" min="0" required placeholder="0.00" />
+              </div>
+              <div class="input-group full-width">
+                <label>Descrição (Opcional)</label>
+                <textarea id="service-description" placeholder="Detalhes adicionais sobre o serviço"></textarea>
+              </div>
+            </div>
+            <div class="form-actions">
+              <button class="button-secondary" type="button" id="cancel-service">Cancelar</button>
+              <button class="button-primary" type="submit">Salvar Serviço</button>
+            </div>
+          </form>
+
+          <div class="table-card glass-panel">
+            <div class="table-wrapper">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Serviço</th>
+                    <th>Preço</th>
+                    <th>Descrição</th>
+                    <th>Ações</th>
+                  </tr>
+                </thead>
+                <tbody id="services-table"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- Painel de Agendamentos -->
+        <section id="appointments-panel" class="panel hidden fade-in">
+          <div class="panel-header">
+            <div class="panel-title">
+              <h2><i class="ph ph-calendar-check"></i> Agendamentos</h2>
+              <p>Controle a agenda e faturamento.</p>
+            </div>
+            <button class="button-primary" id="new-appointment">
+              <i class="ph ph-plus-circle"></i> Novo Agendamento
+            </button>
+          </div>
+
+          <form id="appointment-form" class="form-card glass-panel hidden">
+             <h3 class="form-title">Detalhes do Agendamento</h3>
+            <input type="hidden" id="appointment-id" />
+            <div class="form-grid">
+              <div class="input-group">
+                <label>Cliente</label>
+                <select id="appointment-client" required>
+                  <!-- Opções preenchidas pelo JS -->
+                </select>
+              </div>
+              <div class="input-group">
+                <label>Data e Hora</label>
+                <input id="appointment-date" type="datetime-local" required />
+              </div>
+              <div class="input-group full-width">
+                <label>Serviços Realizados</label>
+                <div id="appointment-services" class="checkbox-grid"></div>
+              </div>
+              <div class="input-group">
+                <label>Tipo de Pagamento</label>
+                <select id="appointment-payment-type">
+                  <option value="dinheiro">Dinheiro</option>
+                  <option value="pix">PIX</option>
+                  <option value="debito">Débito</option>
+                  <option value="credito">Crédito</option>
+                </select>
+              </div>
+              <div class="input-group">
+                <label>Pagamento</label>
+                <select id="appointment-payment-status">
+                  <option value="a pagar">A pagar</option>
+                  <option value="ja pago">Já pago</option>
+                </select>
+              </div>
+              <div class="input-group full-width hidden" id="appointment-payment-proof-group">
+                <label>Comprovante de Pagamento</label>
+                <input id="appointment-payment-proof" type="file" accept=".jpg,.jpeg,.png,.webp,.gif,.pdf,image/jpeg,image/png,image/webp,image/gif,application/pdf" />
+                <span class="field-hint" id="appointment-payment-proof-current"></span>
+              </div>
+              <div class="input-group full-width">
+                <label>Notas Adicionais</label>
+                <textarea id="appointment-notes" placeholder="Alguma observação para este agendamento?"></textarea>
+              </div>
+              <div class="input-group full-width">
+                <label>Anexo das Notas</label>
+                <input id="appointment-note-attachment" type="file" accept=".jpg,.jpeg,.png,.webp,.gif,.pdf,image/jpeg,image/png,image/webp,image/gif,application/pdf" />
+                <span class="field-hint" id="appointment-note-attachment-current">Imagem ou PDF de até 2 MB.</span>
+              </div>
+            </div>
+            
+            <div class="form-summary">
+              <span class="summary-label">Valor Total do Agendamento</span>
+              <strong class="summary-value" id="appointment-total">R$ 0,00</strong>
+            </div>
+
+            <div class="form-actions">
+              <button class="button-secondary" type="button" id="cancel-appointment">Cancelar</button>
+              <button class="button-primary" type="submit">Salvar Agendamento</button>
+            </div>
+          </form>
+
+          <div class="table-card glass-panel">
+            <div class="appointment-filters">
+              <div class="input-group">
+                <label>Data</label>
+                <input id="appointment-filter-date" type="date" />
+              </div>
+              <div class="input-group">
+                <label>Horário</label>
+                <input id="appointment-filter-time" type="time" />
+              </div>
+              <div class="input-group">
+                <label>Valor mínimo</label>
+                <input id="appointment-filter-min-value" type="number" step="0.01" min="0" placeholder="0.00" />
+              </div>
+              <div class="input-group">
+                <label>Valor máximo</label>
+                <input id="appointment-filter-max-value" type="number" step="0.01" min="0" placeholder="0.00" />
+              </div>
+              <div class="input-group">
+                <label>Serviço</label>
+                <select id="appointment-filter-service">
+                  <option value="">Todos</option>
+                </select>
+              </div>
+              <div class="input-group">
+                <label>Pagamento</label>
+                <select id="appointment-filter-payment-status">
+                  <option value="">Todos</option>
+                  <option value="ja pago">Já pago</option>
+                  <option value="a pagar">A pagar</option>
+                </select>
+              </div>
+              <button class="button-secondary" type="button" id="clear-appointment-filters">
+                <i class="ph ph-x-circle"></i> Limpar
+              </button>
+            </div>
+            <div class="table-wrapper">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Cliente</th>
+                    <th>Data</th>
+                    <th>Serviços</th>
+                    <th>Valor</th>
+                    <th>Pagamento</th>
+                    <th>Ações</th>
+                  </tr>
+                </thead>
+                <tbody id="appointments-table"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- Painel de Histórico -->
+        <section id="history-panel" class="panel hidden fade-in">
+          <div class="panel-header">
+            <div class="panel-title">
+              <h2><i class="ph ph-clock-counter-clockwise"></i> Histórico de Serviços</h2>
+              <p>Consulte os trabalhos finalizados e filtre por período, valor, pagamento e serviço.</p>
+            </div>
+          </div>
+
+          <div class="table-card glass-panel">
+            <div class="appointment-filters history-filters">
+              <div class="input-group">
+                <label>Cliente</label>
+                <select id="history-filter-client">
+                  <option value="">Todos</option>
+                </select>
+              </div>
+              <div class="input-group">
+                <label>Data</label>
+                <input id="history-filter-date" type="date" />
+              </div>
+              <div class="input-group">
+                <label>Horário</label>
+                <input id="history-filter-time" type="time" />
+              </div>
+              <div class="input-group">
+                <label>Valor mínimo</label>
+                <input id="history-filter-min-value" type="number" step="0.01" min="0" placeholder="0.00" />
+              </div>
+              <div class="input-group">
+                <label>Valor máximo</label>
+                <input id="history-filter-max-value" type="number" step="0.01" min="0" placeholder="0.00" />
+              </div>
+              <div class="input-group">
+                <label>Serviço</label>
+                <select id="history-filter-service">
+                  <option value="">Todos</option>
+                </select>
+              </div>
+              <div class="input-group">
+                <label>Pagamento</label>
+                <select id="history-filter-payment-type">
+                  <option value="">Todos</option>
+                  <option value="dinheiro">Dinheiro</option>
+                  <option value="pix">PIX</option>
+                  <option value="debito">Débito</option>
+                  <option value="credito">Crédito</option>
+                </select>
+              </div>
+              <button class="button-secondary" type="button" id="clear-history-filters">
+                <i class="ph ph-x-circle"></i> Limpar
+              </button>
+            </div>
+            <div class="table-wrapper">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Cliente</th>
+                    <th>Data</th>
+                    <th>Serviços</th>
+                    <th>Valor</th>
+                    <th>Pagamento</th>
+                    <th>Comprovante</th>
+                    <th>Finalizado em</th>
+                  </tr>
+                </thead>
+                <tbody id="history-table"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- Painel de Relato de Bugs -->
+        <section id="bugs-panel" class="panel hidden fade-in">
+          <div class="panel-header">
+            <div class="panel-title">
+              <h2><i class="ph ph-bug"></i> Relatar Problema</h2>
+              <p>Encontrou algum problema no sistema? Relate aqui para nossa equipe.</p>
+            </div>
+          </div>
+
+          <form id="bug-form" class="form-card glass-panel">
+            <h3 class="form-title">Descreva o problema ocorrido</h3>
+            <div class="form-grid">
+              <div class="input-group">
+                <label>Nome do Cliente</label>
+                <input id="bug-client-name" type="text" required placeholder="Seu nome" />
+              </div>
+              <div class="input-group">
+                <label>Nome da Barbearia</label>
+                <input id="bug-barbershop-name" type="text" required placeholder="Nome da barbearia" />
+              </div>
+              <div class="input-group full-width">
+                <label>Descreva o problema ocorrido</label>
+                <textarea id="bug-description" required placeholder="Detalhe o bug ou problema encontrado..."></textarea>
+              </div>
+              <div class="input-group full-width">
+                <label>Anexar arquivo ou foto</label>
+                <input id="bug-attachment" type="file" accept=".jpg,.jpeg,.png,.webp,.gif,.pdf,image/jpeg,image/png,image/webp,image/gif,application/pdf" />
+                <span class="field-hint">Imagem ou PDF de até 2 MB.</span>
+              </div>
+            </div>
+            <div class="form-actions">
+              <button class="button-primary" type="submit">Enviar Relato <i class="ph ph-paper-plane-right"></i></button>
+            </div>
+            <p class="message" id="bug-message"></p>
+          </form>
+
+          <div class="table-card glass-panel" style="margin-top: 24px;">
+            <div class="table-wrapper">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Report</th>
+                    <th>Status</th>
+                    <th>Mensagem</th>
+                  </tr>
+                </thead>
+                <tbody id="bug-reports-table"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- Painel de Configurações -->
+        <section id="settings-panel" class="panel hidden fade-in">
+          <div class="panel-header">
+            <div class="panel-title">
+              <h2><i class="ph ph-sliders-horizontal"></i> Configurações</h2>
+              <p>Personalize sua barbearia e o visual do sistema.</p>
+            </div>
+          </div>
+
+          <form id="settings-form" class="form-card glass-panel">
+            <h3 class="form-title">Dados da Barbearia</h3>
+            <div class="form-grid">
+              <div class="input-group full-width">
+                <label for="tenant-name-input">Nome da Barbearia</label>
+                <input id="tenant-name-input" type="text" required placeholder="Ex: Barbearia do João" />
+              </div>
+            </div>
+
+            <h3 class="form-title" style="margin-top: 24px;">Cores do HUD</h3>
+            <div class="form-grid">
+              <div class="input-group">
+                <label for="primary-color-input">Cor principal</label>
+                <input id="primary-color-input" type="color" value="#d4d4d8" />
+              </div>
+              <div class="input-group">
+                <label for="border-color-input">Cor da borda</label>
+                <input id="border-color-input" type="color" value="#3f3f46" />
+              </div>
+            </div>
+
+            <h3 class="form-title" style="margin-top: 24px;">Regras de Finalização</h3>
+            <div class="form-grid">
+              <label class="checkbox-item full-width">
+                <input id="require-pix-proof-input" type="checkbox" />
+                <span>Exigir comprovante para finalizar trabalhos pagos via PIX</span>
+              </label>
+            </div>
+
+            <div class="form-actions">
+              <button class="button-primary" type="submit">Salvar Configurações <i class="ph ph-check-circle"></i></button>
+            </div>
+
+            <p class="message" id="settings-message"></p>
+          </form>
+
+          <form id="recommendation-form" class="form-card glass-panel">
+            <h3 class="form-title">Recomendações</h3>
+            <p class="form-subtitle">Faça recomendações para melhoras futuras no nosso sistema.</p>
+            <div class="form-grid">
+              <div class="input-group">
+                <label for="recommendation-client-name">Nome do Cliente</label>
+                <input id="recommendation-client-name" type="text" required placeholder="Seu nome completo" />
+              </div>
+              <div class="input-group">
+                <label for="recommendation-barbershop-name">Nome da Barbearia</label>
+                <input id="recommendation-barbershop-name" type="text" required placeholder="Nome da barbearia" />
+              </div>
+              <div class="input-group full-width">
+                <label for="recommendation-text">Qual recomendação deseja fazer?</label>
+                <textarea id="recommendation-text" required placeholder="Suas recomendações são sempre bem-vindas!"></textarea>
+              </div>
+              <div class="input-group full-width">
+                <label for="recommendation-attachment">Anexar arquivo ou foto</label>
+                <input id="recommendation-attachment" type="file" accept=".jpg,.jpeg,.png,.webp,.gif,.pdf,image/jpeg,image/png,image/webp,image/gif,application/pdf" />
+                <span class="field-hint">Imagem ou PDF de até 2 MB.</span>
+              </div>
+            </div>
+            <div class="form-actions">
+              <button class="button-primary" type="submit">Enviar Recomendação <i class="ph ph-paper-plane-right"></i></button>
+            </div>
+            <p class="message" id="recommendation-message"></p>
+          </form>
+        </section>
+
+      </div>
+    </main>
+
+    <div id="billing-renewal-modal" class="billing-modal hidden" role="dialog" aria-modal="true">
+      <div class="billing-modal-card glass-panel">
+        <i class="ph ph-warning-circle billing-modal-icon"></i>
+        <h3>Renovação de assinatura</h3>
+        <p id="billing-renewal-message"></p>
+        <button class="button-primary w-full" type="button" id="billing-renewal-close">Entendi</button>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- Theme Toggle -->
+  <button id="theme-toggle" class="theme-toggle" title="Alternar Modo Escuro/Claro">
+    <i class="ph ph-sun"></i>
+  </button>
+
+  <script src="script.js"></script>
+</body>
+</html>

@@ -1,5 +1,6 @@
 const path = require('path');
-require('dotenv').config({ path: path.join(__dirname, '.env') });
+const runtimeDir = process.pkg ? path.dirname(process.execPath) : __dirname;
+require('dotenv').config({ path: path.join(runtimeDir, '.env') });
 const express = require('express');
 const cookieParser = require('cookie-parser');
 const helmet = require('helmet');
@@ -52,7 +53,9 @@ app.use('/api/recommendations', recommendationRoutes);
 app.use('/api/bug-reports', bugReportRoutes);
 app.use('/api/admin', adminRoutes);
 
-const frontendPath = path.join(__dirname, '../frontend');
+const frontendPath = process.pkg
+  ? path.join(runtimeDir, 'frontend')
+  : path.join(__dirname, '../frontend');
 app.use(express.static(frontendPath));
 app.get('/admin.html', (req, res) => {
   res.sendFile(path.join(frontendPath, 'admin.html'));

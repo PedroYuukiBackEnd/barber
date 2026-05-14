@@ -76,14 +76,14 @@
               <i class="ph ph-sign-out"></i> Sair do Painel
             </button>
             <button class="button-secondary" id="notifications-button" type="button">
-              <i class="ph ph-bell-ringing"></i> NotificaÃ§Ãµes <span id="notifications-badge" class="notification-badge hidden">0</span>
+              <i class="ph ph-bell-ringing"></i> Notificações <span id="notifications-badge" class="notification-badge hidden">0</span>
             </button>
           </div>
         </div>
 
         <div id="notifications-popup" class="admin-popup glass-panel hidden">
           <div class="admin-popup-header">
-            <h3>NotificaÃ§Ãµes</h3>
+            <h3>Notificações</h3>
             <button class="icon-button" id="notifications-close" type="button"><i class="ph ph-x"></i></button>
           </div>
           <div class="admin-popup-list" id="notifications-list"></div>
@@ -92,7 +92,7 @@
         <section class="panel active fade-in hidden" style="margin-bottom: 32px;">
           <div class="panel-header" style="margin-bottom: 16px;">
             <div class="panel-title">
-              <h2 style="font-size: 1.5rem;"><i class="ph ph-bell-ringing"></i> NotificaÃ§Ãµes</h2>
+              <h2 style="font-size: 1.5rem;"><i class="ph ph-bell-ringing"></i> Notificações</h2>
               <p>Alertas importantes do painel.</p>
             </div>
           </div>
@@ -130,7 +130,7 @@
           </div>
           <div class="appointment-filters">
             <div class="input-group">
-              <label for="user-billing-filter">CobranÃ§a</label>
+              <label for="user-billing-filter">Cobrança</label>
               <select id="user-billing-filter">
                 <option value="">Todos</option>
                 <option value="subscription">Assinatura</option>
@@ -142,7 +142,7 @@
               <input id="user-created-filter" type="date" />
             </div>
             <div class="input-group">
-              <label for="user-days-filter">Dias mÃ­nimos</label>
+              <label for="user-days-filter">Dias mínimos</label>
               <input id="user-days-filter" type="number" min="0" step="1" placeholder="0" />
             </div>
             <button class="button-secondary" type="button" id="clear-user-filters">
@@ -266,7 +266,7 @@
                 </div>
               </div>
               <div class="input-group full-width" id="edit-billing-type-group">
-                <label for="edit-billing-type">CobranÃ§a</label>
+                <label for="edit-billing-type">Cobrança</label>
                 <div class="input-with-icon">
                   <i class="ph ph-credit-card"></i>
                   <select id="edit-billing-type" required>
@@ -292,7 +292,7 @@
               </div>
               <div class="input-group full-width">
                 <label for="edit-admin-notes">Notas</label>
-                <textarea id="edit-admin-notes" placeholder="ObservaÃ§Ãµes internas sobre esta barbearia"></textarea>
+                <textarea id="edit-admin-notes" placeholder="Observações internas sobre esta barbearia"></textarea>
               </div>
             </div>
             <div class="form-actions">
@@ -371,7 +371,7 @@
                 </div>
               </div>
               <div class="input-group full-width">
-                <label for="register-billing-type">CobranÃ§a</label>
+                <label for="register-billing-type">Cobrança</label>
                 <div class="input-with-icon">
                   <i class="ph ph-credit-card"></i>
                   <select id="register-billing-type" required>
@@ -382,7 +382,7 @@
               </div>
               <div class="input-group full-width">
                 <label for="register-notes">Notas</label>
-                <textarea id="register-notes" placeholder="ObservaÃ§Ãµes internas sobre esta barbearia"></textarea>
+                <textarea id="register-notes" placeholder="Observações internas sobre esta barbearia"></textarea>
               </div>
             </div>
             <div class="form-actions">
@@ -576,7 +576,7 @@
             <tr>
               <th>Nome</th>
                 <th>Acesso</th>
-                <th>CobranÃ§a</th>
+                <th>Cobrança</th>
                 <th>Dias</th>
               <th>Status</th>
               <th>Comprovante</th>
@@ -640,7 +640,7 @@
           date: report.created_at,
         })),
         ...adminRecommendations.map((item) => ({
-          type: 'nova recomendaÃ§Ã£o',
+          type: 'nova recomendação',
           text: `${item.client_name} - ${item.barbershop_name || item.tenant_name}`,
           date: item.created_at,
         })),
@@ -652,7 +652,7 @@
       }
 
       if (!notifications.length) {
-        notificationsList.innerHTML = '<p style="padding: 16px; color: var(--text-secondary);">Nenhuma notificaÃ§Ã£o nova.</p>';
+        notificationsList.innerHTML = '<p style="padding: 16px; color: var(--text-secondary);">Nenhuma notificação nova.</p>';
         return;
       }
 
@@ -702,11 +702,11 @@
               <th>Nome</th>
               <th>Acesso</th>
               <th>Role</th>
-              <th>CobranÃ§a</th>
+              <th>Cobrança</th>
               <th>Notas</th>
               <th>Usando desde</th>
               <th>Dias</th>
-              <th>AÃ§Ãµes</th>
+              <th>Ações</th>
             </tr>
           </thead>
           <tbody>
@@ -758,7 +758,7 @@
                 <th>Nome</th>
                 <th>Acesso</th>
                 <th>Role</th>
-                <th>CobranÃ§a</th>
+                <th>Cobrança</th>
                 <th>Notas</th>
                 <th>Usando desde</th>
                 <th>Dias</th>

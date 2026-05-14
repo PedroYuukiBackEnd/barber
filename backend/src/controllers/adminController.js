@@ -1,8 +1,8 @@
 const db = require('../config/db');
-const bcrypt = require('bcrypt');
 const { createTenant } = require('../models/tenantModel');
 const { createUser, updateUser } = require('../models/userModel');
 const { normalizeAttachment } = require('../utils/attachment');
+const { hashPassword } = require('../utils/password');
 
 const ALLOWED_ROLES = ['superadmin', 'user'];
 const ALLOWED_BILLING_TYPES = ['subscription', 'full_payment'];
@@ -26,19 +26,14 @@ function allQuery(query, params = []) {
 }
 
 async function ensureBillingColumns() {
-  const columns = await allQuery(
-    `SELECT column_name AS name
-     FROM information_schema.columns
-     WHERE table_schema = current_schema()
-       AND table_name = 'users'`
-  );
+  const columns = await allQuery('PRAGMA table_info(users)');
   const columnNames = columns.map((column) => column.name);
   if (!columnNames.includes('billing_cycle_started_at')) {
-    await runQuery('ALTER TABLE users ADD COLUMN billing_cycle_started_at TIMESTAMP');
+    await runQuery('ALTER TABLE users ADD COLUMN billing_cycle_started_at TEXT');
     await runQuery('UPDATE users SET billing_cycle_started_at = COALESCE(created_at, CURRENT_TIMESTAMP) WHERE billing_cycle_started_at IS NULL');
   }
   if (!columnNames.includes('billing_paid_at')) {
-    await runQuery('ALTER TABLE users ADD COLUMN billing_paid_at TIMESTAMP DEFAULT NULL');
+    await runQuery('ALTER TABLE users ADD COLUMN billing_paid_at TEXT DEFAULT NULL');
   }
   if (!columnNames.includes('admin_notes')) {
     await runQuery("ALTER TABLE users ADD COLUMN admin_notes TEXT DEFAULT ''");
@@ -94,11 +89,6 @@ async function getUsers(req, res, next) {
       `SELECT u.id, u.tenant_id, u.name, u.email, u.role, u.created_at,
               u.billing_type, u.admin_notes, u.billing_cycle_started_at, u.billing_paid_at,
               u.billing_proof_name, u.billing_proof_data,
-              FLOOR(EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - COALESCE(u.billing_cycle_started_at, u.created_at))) / 86400)::int AS billing_elapsed_days,
-              CASE
-                WHEN u.billing_paid_at IS NULL THEN NULL
-                ELSE EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - u.billing_paid_at)) / 3600
-              END AS billing_paid_age_hours,
               t.name AS tenant_name
        FROM users u
        JOIN tenants t ON t.id = u.tenant_id
@@ -212,12 +202,7 @@ async function markUserBillingPaid(req, res, next) {
     }
 
     const users = await allQuery(
-      `SELECT id, name, email, role, billing_type, billing_proof_name, billing_proof_data, created_at, billing_cycle_started_at, billing_paid_at,
-              FLOOR(EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - COALESCE(billing_cycle_started_at, created_at))) / 86400)::int AS billing_elapsed_days,
-              CASE
-                WHEN billing_paid_at IS NULL THEN NULL
-                ELSE EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - billing_paid_at)) / 3600
-              END AS billing_paid_age_hours
+      `SELECT id, name, email, role, billing_type, billing_proof_name, billing_proof_data, created_at, billing_cycle_started_at, billing_paid_at
        FROM users
        WHERE id = ?`,
       [id]
@@ -271,7 +256,7 @@ async function createPlatformAdmin(req, res, next) {
       return res.status(400).json({ message: 'Email ja cadastrado.' });
     }
 
-    const passwordHash = await bcrypt.hash(password, 12);
+    const passwordHash = hashPassword(password);
     const user = await createUser(req.user.tenant_id, name, email, passwordHash, 'superadmin');
 
     res.status(201).json({ user });
@@ -291,7 +276,7 @@ async function registerTenant(req, res, next) {
     }
 
     const selectedBillingType = ALLOWED_BILLING_TYPES.includes(billingType) ? billingType : 'subscription';
-    const passwordHash = await bcrypt.hash(password, 12);
+    const passwordHash = hashPassword(password);
     const tenant = await createTenant(tenantName);
     const user = await createUser(tenant.id, name, email, passwordHash, 'user', adminNotes || '', selectedBillingType);
 
@@ -320,13 +305,14 @@ async function editUser(req, res, next) {
 
     let passwordHash;
     if (password) {
-      passwordHash = await bcrypt.hash(password, 12);
+      passwordHash = hashPassword(password);
     }
 
     const updated = await updateUser(id, name, email, role, billingType || 'subscription', adminNotes || '', passwordHash);
     if (billingDays !== undefined && role !== 'superadmin') {
       const days = Math.max(0, Math.floor(Number(billingDays) || 0));
-      await runQuery("UPDATE users SET billing_cycle_started_at = CURRENT_TIMESTAMP - (?::int * INTERVAL '1 day'), billing_paid_at = NULL WHERE id = ?", [days, id]);
+      const cycleStart = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+      await runQuery('UPDATE users SET billing_cycle_started_at = ?, billing_paid_at = NULL WHERE id = ?', [cycleStart, id]);
     }
     res.json({ user: updated });
   } catch (error) {

@@ -9,7 +9,7 @@ function listAppointments(tenantId) {
          a.client_id,
          c.name AS client_name,
          c.phone AS client_phone,
-         to_char(a.appointment_date, 'YYYY-MM-DD"T"HH24:MI') AS appointment_date,
+         a.appointment_date,
          a.total,
          a.payment_type,
          a.payment_status,
@@ -87,7 +87,7 @@ function createAppointment(tenantId, clientId, appointmentDate, total, paymentTy
             [appointmentId, service.id, service.name, service.price]
           )));
 
-          db.get(`SELECT id, to_char(appointment_date, 'YYYY-MM-DD"T"HH24:MI') AS appointment_date, total, payment_status, payment_proof_name, payment_proof_data, note_attachment_name, note_attachment_data, notes FROM appointments WHERE id = ?`, [appointmentId], (err, row) => {
+          db.get(`SELECT id, appointment_date, total, payment_status, payment_proof_name, payment_proof_data, note_attachment_name, note_attachment_data, notes FROM appointments WHERE id = ?`, [appointmentId], (err, row) => {
             if (err) reject(err);
             else resolve(row);
           });
@@ -101,7 +101,7 @@ function createAppointment(tenantId, clientId, appointmentDate, total, paymentTy
 
 function getAppointmentById(id, tenantId) {
   return new Promise((resolve, reject) => {
-    db.get(`SELECT id, client_id, to_char(appointment_date, 'YYYY-MM-DD"T"HH24:MI') AS appointment_date, total, payment_type, payment_status, payment_proof_name, payment_proof_data, note_attachment_name, note_attachment_data, notes FROM appointments WHERE id = ? AND tenant_id = ?`, [id, tenantId], (err, row) => {
+    db.get(`SELECT id, client_id, appointment_date, total, payment_type, payment_status, payment_proof_name, payment_proof_data, note_attachment_name, note_attachment_data, notes FROM appointments WHERE id = ? AND tenant_id = ?`, [id, tenantId], (err, row) => {
       if (err) reject(err);
       else resolve(row);
     });
@@ -130,7 +130,7 @@ function updateAppointment(id, tenantId, clientId, appointmentDate, total, payme
             [id, service.id, service.name, service.price]
           )));
 
-          db.get(`SELECT id, to_char(appointment_date, 'YYYY-MM-DD"T"HH24:MI') AS appointment_date, total, payment_status, payment_proof_name, payment_proof_data, note_attachment_name, note_attachment_data, notes FROM appointments WHERE id = ?`, [id], (err, row) => {
+          db.get(`SELECT id, appointment_date, total, payment_status, payment_proof_name, payment_proof_data, note_attachment_name, note_attachment_data, notes FROM appointments WHERE id = ?`, [id], (err, row) => {
             if (err) reject(err);
             else resolve(row);
           });
@@ -157,7 +157,7 @@ async function getAppointmentSnapshot(id, tenantId) {
          a.client_id,
          c.name AS client_name,
          c.phone AS client_phone,
-         to_char(a.appointment_date, 'YYYY-MM-DD"T"HH24:MI') AS appointment_date,
+         a.appointment_date,
          a.total,
          a.payment_type,
          a.payment_status,
@@ -218,11 +218,11 @@ async function finishAppointment(id, tenantId) {
          notes,
          services
        )
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?::jsonb)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        RETURNING id, tenant_id, appointment_id, client_name, client_phone,
-                 to_char(appointment_date, 'YYYY-MM-DD"T"HH24:MI') AS appointment_date,
+                 appointment_date,
                  total, payment_type, payment_status, payment_proof_name, payment_proof_data, note_attachment_name, note_attachment_data, notes, services,
-                 to_char(completed_at, 'YYYY-MM-DD"T"HH24:MI') AS completed_at`,
+                 completed_at`,
       [
         tenantId,
         appointment.id,
@@ -254,9 +254,9 @@ function listServiceHistory(tenantId) {
   return new Promise((resolve, reject) => {
     db.all(
       `SELECT id, appointment_id, client_name, client_phone,
-              to_char(appointment_date, 'YYYY-MM-DD"T"HH24:MI') AS appointment_date,
+              appointment_date,
               total, payment_type, payment_status, payment_proof_name, payment_proof_data, note_attachment_name, note_attachment_data, notes, services,
-              to_char(completed_at, 'YYYY-MM-DD"T"HH24:MI') AS completed_at
+              completed_at
        FROM service_history
        WHERE tenant_id = ?
        ORDER BY completed_at DESC`,

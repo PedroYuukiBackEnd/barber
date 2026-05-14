@@ -1,74 +1,78 @@
-const { Pool } = require('pg');
+const path = require('path');
+const Database = require('better-sqlite3');
 
-const connectionString = process.env.DATABASE_URL;
+const runtimeDir = process.pkg ? path.dirname(process.execPath) : path.join(__dirname, '../..');
+const databasePath = process.env.SQLITE_DATABASE_PATH
+  ? path.resolve(process.env.SQLITE_DATABASE_PATH)
+  : path.join(runtimeDir, 'database.sqlite');
 
-if (!connectionString) {
-  throw new Error('DATABASE_URL e obrigatoria. Configure backend/.env para rodar o sistema.');
+const database = new Database(databasePath);
+database.pragma('foreign_keys = ON');
+
+function run(sql, params = []) {
+  const statement = database.prepare(sql);
+  const info = statement.run(params);
+
+  return Promise.resolve({
+    lastID: info.lastInsertRowid,
+    changes: info.changes,
+    rowCount: info.changes,
+    rows: [],
+  });
 }
 
-const pool = new Pool({
-  connectionString,
-  ssl: process.env.DATABASE_SSL === 'true' ? { rejectUnauthorized: false } : undefined,
-});
-
-function normalizeQuery(sql, params = []) {
-  let index = 0;
-  const text = sql.replace(/\?/g, () => `$${++index}`);
-  return { text, values: params };
+function get(sql, params = []) {
+  const statement = database.prepare(sql);
+  return Promise.resolve(statement.get(params));
 }
 
-async function query(sql, params = []) {
-  const normalized = normalizeQuery(sql, params);
-  return pool.query(normalized.text, normalized.values);
+function all(sql, params = []) {
+  const statement = database.prepare(sql);
+  return Promise.resolve(statement.all(params));
 }
 
-function withCallback(promise, callback, mapper) {
+function withCallback(promise, callback) {
   promise
-    .then((result) => callback(null, mapper(result)))
+    .then((result) => callback(null, result))
     .catch((error) => callback(error));
 }
 
 const db = {
-  query,
+  query(sql, params = []) {
+    return all(sql, params).then((rows) => ({ rows, rowCount: rows.length }));
+  },
 
   get(sql, params = [], callback) {
-    const promise = query(sql, params);
+    const promise = get(sql, params);
     if (callback) {
-      withCallback(promise, callback, (result) => result.rows[0]);
+      withCallback(promise, callback);
       return;
     }
-    return promise.then((result) => result.rows[0]);
+    return promise;
   },
 
   all(sql, params = [], callback) {
-    const promise = query(sql, params);
+    const promise = all(sql, params);
     if (callback) {
-      withCallback(promise, callback, (result) => result.rows);
+      withCallback(promise, callback);
       return;
     }
-    return promise.then((result) => result.rows);
+    return promise;
   },
 
   run(sql, params = [], callback) {
-    const promise = query(sql, params).then((result) => ({
-      lastID: result.rows[0]?.id,
-      changes: result.rowCount,
-      rowCount: result.rowCount,
-      rows: result.rows,
-    }));
-
+    const promise = run(sql, params);
     if (callback) {
       promise
         .then((context) => callback.call(context, null))
         .catch((error) => callback(error));
       return;
     }
-
     return promise;
   },
 
   exec(sql, callback) {
-    const promise = pool.query(sql);
+    const promise = Promise.resolve().then(() => database.exec(sql));
     if (callback) {
       promise.then(() => callback(null)).catch((error) => callback(error));
       return;
@@ -77,7 +81,7 @@ const db = {
   },
 
   close(callback) {
-    const promise = pool.end();
+    const promise = Promise.resolve().then(() => database.close());
     if (callback) {
       promise.then(() => callback(null)).catch((error) => callback(error));
       return;
