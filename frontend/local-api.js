@@ -4,6 +4,10 @@
 
   const STORAGE_KEY = 'sistema_barber_standalone_db_v1';
   const SESSION_KEY = 'sistema_barber_standalone_session_v1';
+  const LICENSE_CACHE_KEY = 'sistema_barber_license_cache_v1';
+  const LICENSE_GRACE_DAYS = 3;
+  const SUPABASE_URL = 'https://nvgpylhbwripujfwlskg.supabase.co';
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im52Z3B5bGhid3JpcHVqZndsc2tnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg3ODgwNzEsImV4cCI6MjA5NDM2NDA3MX0.PDATmodiolnySnRnZKXAHVeyNsHwSMxnBekGuBs0uY8';
   const originalFetch = window.fetch.bind(window);
 
   function now() {
@@ -147,6 +151,96 @@
     return new URL(value, 'http://standalone.local');
   }
 
+  function licenseCodeFor(user) {
+    return String(user?.email || '').trim();
+  }
+
+  function loadLicenseCache() {
+    try {
+      return JSON.parse(localStorage.getItem(LICENSE_CACHE_KEY) || '{}');
+    } catch (_) {
+      return {};
+    }
+  }
+
+  function saveLicenseCache(cache) {
+    localStorage.setItem(LICENSE_CACHE_KEY, JSON.stringify(cache));
+  }
+
+  function isDateExpired(dateValue) {
+    if (!dateValue) return true;
+    const expiresAt = new Date(`${dateValue}T23:59:59`).getTime();
+    return !Number.isFinite(expiresAt) || expiresAt < Date.now();
+  }
+
+  function evaluateLicense(user, license) {
+    if (!license) {
+      return { allowed: false, message: 'Licenca nao encontrada. Entre em contato com o suporte.' };
+    }
+    if (license.status !== 'ativo') {
+      return { allowed: false, message: 'Sistema bloqueado. Regularize sua assinatura para continuar.' };
+    }
+    if (user.billing_type === 'full_payment') {
+      return { allowed: true };
+    }
+    if (isDateExpired(license.vence_em)) {
+      return { allowed: false, message: 'Assinatura vencida. Entre em contato com o suporte para renovar.' };
+    }
+    return { allowed: true };
+  }
+
+  function getCachedLicense(code) {
+    const cache = loadLicenseCache();
+    return cache[code] || null;
+  }
+
+  function setCachedLicense(code, license) {
+    const cache = loadLicenseCache();
+    cache[code] = { ...license, validated_at: now() };
+    saveLicenseCache(cache);
+  }
+
+  function isInsideGracePeriod(cachedLicense) {
+    const validatedAt = cachedLicense?.validated_at ? new Date(cachedLicense.validated_at).getTime() : 0;
+    return Number.isFinite(validatedAt) && Date.now() - validatedAt <= LICENSE_GRACE_DAYS * 24 * 60 * 60 * 1000;
+  }
+
+  async function fetchRemoteLicense(code) {
+    const endpoint = `${SUPABASE_URL}/rest/v1/clientes?codigo_licenca=eq.${encodeURIComponent(code)}&select=nome,codigo_licenca,status,vence_em&limit=1`;
+    const response = await originalFetch(endpoint, {
+      headers: {
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+      },
+    });
+    if (!response.ok) throw new Error(`Falha ao validar licenca (${response.status}).`);
+    const licenses = await response.json();
+    return licenses[0] || null;
+  }
+
+  async function verifyRemoteLicense(user) {
+    if (!user || user.role === 'superadmin') return { allowed: true };
+    const code = licenseCodeFor(user);
+    if (!code) return { allowed: false, message: 'Licenca local sem codigo de acesso.' };
+
+    try {
+      const license = await fetchRemoteLicense(code);
+      const result = evaluateLicense(user, license);
+      if (result.allowed) setCachedLicense(code, license);
+      return result;
+    } catch (_) {
+      const cachedLicense = getCachedLicense(code);
+      const cachedResult = evaluateLicense(user, cachedLicense);
+      if (cachedResult.allowed && isInsideGracePeriod(cachedLicense)) {
+        return { allowed: true };
+      }
+      return {
+        allowed: false,
+        message: 'Nao foi possivel validar a licenca pela internet. Conecte o aparelho e tente novamente.',
+      };
+    }
+  }
+
   async function handleApi(input, options = {}) {
     const url = parseUrl(input);
     if (!url.pathname.startsWith('/api/')) return originalFetch(input, options);
@@ -160,6 +254,8 @@
       if (path === '/api/auth/login' && method === 'POST') {
         const user = db.users.find((item) => (item.email === body.email || item.name === body.email) && item.password === body.password);
         if (!user) return jsonResponse({ message: 'Credenciais inválidas.' }, 401);
+        const license = await verifyRemoteLicense(user);
+        if (!license.allowed) return jsonResponse({ message: license.message }, 403);
         localStorage.setItem(SESSION_KEY, String(user.id));
         return jsonResponse({ user: billingInfo(user), tenant: tenantFor(db, user) });
       }
@@ -172,6 +268,11 @@
       if (path === '/api/auth/me' && method === 'GET') {
         const session = requireSession(db);
         if (session.error) return jsonResponse(session.error, session.status);
+        const license = await verifyRemoteLicense(session.user);
+        if (!license.allowed) {
+          localStorage.removeItem(SESSION_KEY);
+          return jsonResponse({ message: license.message }, 403);
+        }
         return jsonResponse({ user: billingInfo(session.user), tenant: tenantFor(db, session.user) });
       }
 

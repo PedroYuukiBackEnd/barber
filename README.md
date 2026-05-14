@@ -82,6 +82,18 @@ Observacao: esse APK atual e uma build debug para teste/entrega direta. Para Pla
 
 No iPhone, a distribuicao nativa e `.ipa`/TestFlight/App Store, nao `.dmg`. `.dmg` e formato de instalador para macOS.
 
+## Licencas remotas
+
+O APK standalone consulta a tabela `clientes` no Supabase usando o acesso do usuario como `codigo_licenca`.
+
+Regras:
+
+- `superadmin` local nao valida licenca remota.
+- Cliente com `billing_type=subscription`: precisa ter `status=ativo` e `vence_em` igual ou maior que a data atual.
+- Cliente com `billing_type=full_payment`: precisa ter `status=ativo`, mas nao bloqueia por `vence_em`.
+- `status=bloqueado` ou `status=vencido` bloqueia qualquer cliente comum.
+- Sem internet, o app permite uso por ate 3 dias somente se houver uma validacao ativa recente salva no aparelho.
+
 ## Atualizacoes e localhost
 
 Mesmo entregando por executavel ou APK, voce pode continuar testando atualizacoes em `localhost`.
