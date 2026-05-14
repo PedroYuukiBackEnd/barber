@@ -4,3 +4,9 @@ node_modules
 **/*.log
 backend/database.sqlite
 backend/uploads
+android-sdk
+tmp
+tools
+android-standalone/local.properties
+android-standalone/.gradle
+android-standalone/app/build

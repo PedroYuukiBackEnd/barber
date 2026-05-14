@@ -63,10 +63,22 @@ Em uma etapa futura, esse executavel pode ser colocado dentro de um instalador c
 
 ## APK, iOS e celulares
 
-O sistema atual roda como aplicativo local no computador e pode ser acessado por celulares na mesma rede. Para um APK Android instalado, existem dois caminhos:
+O APK standalone Android fica em:
 
-- APK cliente: o app Android abre a interface instalada e conecta no servidor local do computador pelo IP da rede. E o caminho mais simples para usar celular junto com o PC da barbearia.
-- APK standalone: o app Android roda banco e regras de negocio dentro do proprio celular. Isso exige uma versao mobile separada, porque o backend atual e Node.js local para PC.
+```text
+android-standalone/dist/SistemaBarber-standalone-debug.apk
+```
+
+Esse APK roda sem servidor e salva os dados no proprio armazenamento do aplicativo no Android. O acesso inicial dentro do APK e:
+
+```text
+Acesso: localadmin
+Senha: localadmin123
+```
+
+Para instalar, copie o APK para o celular e abra o arquivo. O Android pode pedir permissao para instalar apps de fontes desconhecidas.
+
+Observacao: esse APK atual e uma build debug para teste/entrega direta. Para Play Store ou venda em escala, gere uma build release assinada com uma chave definitiva.
 
 No iPhone, a distribuicao nativa e `.ipa`/TestFlight/App Store, nao `.dmg`. `.dmg` e formato de instalador para macOS.
 
