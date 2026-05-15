@@ -1,12 +1,21 @@
 const path = require('path');
+const fs = require('fs');
 const Database = require('better-sqlite3');
 
 const runtimeDir = process.pkg ? path.dirname(process.execPath) : path.join(__dirname, '../..');
-const databasePath = process.env.SQLITE_DATABASE_PATH
-  ? path.resolve(process.env.SQLITE_DATABASE_PATH)
+const configuredDatabasePath = process.env.SQLITE_DATABASE_PATH;
+const databasePath = configuredDatabasePath
+  ? (path.isAbsolute(configuredDatabasePath)
+    ? configuredDatabasePath
+    : path.join(runtimeDir, configuredDatabasePath))
   : path.join(runtimeDir, 'database.sqlite');
 
-const database = new Database(databasePath);
+const nativeBindingPath = process.pkg ? path.join(runtimeDir, 'better_sqlite3.node') : null;
+const databaseOptions = nativeBindingPath && fs.existsSync(nativeBindingPath)
+  ? { nativeBinding: nativeBindingPath }
+  : {};
+
+const database = new Database(databasePath, databaseOptions);
 database.pragma('foreign_keys = ON');
 
 function run(sql, params = []) {

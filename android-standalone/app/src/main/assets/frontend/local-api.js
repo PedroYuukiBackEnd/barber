@@ -41,9 +41,9 @@
       users: [{
         id: 1,
         tenant_id: 1,
-        name: 'Admin Local',
-        email: 'localadmin',
-        password: 'localadmin123',
+        name: 'Admin Inicial',
+        email: 'pedroyuuki2008',
+        password: 'pedroyuuki2008',
         role: 'superadmin',
         billing_type: 'subscription',
         admin_notes: '',

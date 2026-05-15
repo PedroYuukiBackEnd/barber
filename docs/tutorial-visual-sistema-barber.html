@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tutorial Visual - Sistema Barber</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #09090b;
+      --panel: #15151a;
+      --panel-2: #202027;
+      --text: #f4f4f5;
+      --muted: #b6b6c3;
+      --line: #34343f;
+      --accent: #e7e7ec;
+      --good: #39d98a;
+      --warn: #f7c948;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+    }
+    header {
+      min-height: 92vh;
+      display: grid;
+      place-items: center;
+      padding: 48px 24px;
+      border-bottom: 1px solid var(--line);
+    }
+    .hero {
+      width: min(1080px, 100%);
+      display: grid;
+      gap: 28px;
+    }
+    .eyebrow {
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-weight: 700;
+      font-size: 13px;
+    }
+    h1 {
+      margin: 0;
+      font-size: clamp(42px, 7vw, 96px);
+      line-height: 0.95;
+      letter-spacing: 0;
+    }
+    h2 {
+      margin: 0 0 16px;
+      font-size: clamp(28px, 4vw, 48px);
+      letter-spacing: 0;
+    }
+    h3 {
+      margin: 0 0 10px;
+      font-size: 22px;
+    }
+    p { margin: 0; color: var(--muted); }
+    .hero p { font-size: 20px; max-width: 760px; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 16px;
+    }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 22px;
+    }
+    .card strong {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 18px;
+    }
+    section {
+      width: min(1120px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 58px 0;
+      border-bottom: 1px solid var(--line);
+    }
+    .steps {
+      counter-reset: step;
+      display: grid;
+      gap: 14px;
+    }
+    .step {
+      counter-increment: step;
+      display: grid;
+      grid-template-columns: 52px 1fr;
+      gap: 16px;
+      align-items: start;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 18px;
+    }
+    .step::before {
+      content: counter(step);
+      display: grid;
+      place-items: center;
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: #111;
+      font-weight: 800;
+    }
+    .mock {
+      border: 1px solid var(--line);
+      background: var(--panel);
+      border-radius: 8px;
+      overflow: hidden;
+      margin-top: 18px;
+    }
+    .mock-top {
+      display: flex;
+      gap: 8px;
+      padding: 12px;
+      background: var(--panel-2);
+      border-bottom: 1px solid var(--line);
+    }
+    .dot { width: 10px; height: 10px; border-radius: 999px; background: var(--muted); }
+    .mock-body {
+      padding: 20px;
+      display: grid;
+      gap: 12px;
+    }
+    .row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 12px;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #101014;
+    }
+    .tag {
+      display: inline-block;
+      padding: 5px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      color: #111;
+      background: var(--good);
+    }
+    .tag.warn { background: var(--warn); }
+    .credentials {
+      display: grid;
+      gap: 10px;
+      padding: 18px;
+      border: 1px dashed var(--line);
+      border-radius: 8px;
+      background: #101014;
+      color: var(--text);
+      font-family: Consolas, monospace;
+      font-size: 18px;
+    }
+    footer {
+      width: min(1120px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 44px 0 64px;
+      color: var(--muted);
+    }
+    @media print {
+      header { min-height: auto; }
+      section { break-inside: avoid; }
+      body { background: #fff; color: #111; }
+      p, footer { color: #333; }
+      .card, .step, .mock, .credentials { border-color: #ccc; background: #fff; color: #111; }
+      .mock-top { background: #eee; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="hero">
+      <div class="eyebrow">Tutorial visual de uso</div>
+      <h1>Sistema Barber</h1>
+      <p>Guia rapido para instalar, entrar no painel e usar as principais funcoes do sistema no dia a dia da barbearia.</p>
+      <div class="grid">
+        <div class="card"><strong>Android</strong><p>Instale o APK release no celular e abra o aplicativo Sistema Barber.</p></div>
+        <div class="card"><strong>Windows</strong><p>Abra o executavel local e acesse o sistema pelo navegador no proprio computador.</p></div>
+        <div class="card"><strong>Licenca</strong><p>O acesso e validado pela internet conforme o plano cadastrado pelo administrador.</p></div>
+      </div>
+    </div>
+  </header>
+
+  <section>
+    <h2>1. Primeiro Acesso</h2>
+    <div class="steps">
+      <div class="step"><div><h3>Abra o sistema</h3><p>No Android, toque no app instalado. No Windows, execute o sistema local e abra o endereco indicado.</p></div></div>
+      <div class="step"><div><h3>Digite o login inicial</h3><p>Use as credenciais entregues junto com o sistema. Depois, troque a senha se desejar.</p></div></div>
+      <div class="step"><div><h3>Confira a tela principal</h3><p>Ao entrar, voce vera as areas de clientes, servicos, agenda, historico e configuracoes.</p></div></div>
+    </div>
+    <div class="credentials">
+      <div>Acesso inicial: pedroyuuki2008</div>
+      <div>Senha inicial: pedroyuuki2008</div>
+    </div>
+  </section>
+
+  <section>
+    <h2>2. Cadastrar Clientes</h2>
+    <div class="mock">
+      <div class="mock-top"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
+      <div class="mock-body">
+        <div class="row"><span>Nome do cliente</span><span class="tag">Obrigatorio</span></div>
+        <div class="row"><span>Telefone</span><span class="tag warn">Opcional</span></div>
+        <div class="row"><span>Observacoes</span><span class="tag warn">Opcional</span></div>
+      </div>
+    </div>
+    <p>Use a area Clientes para salvar nome, telefone e observacoes. Esses dados ajudam a agendar mais rapido e manter historico.</p>
+  </section>
+
+  <section>
+    <h2>3. Cadastrar Servicos</h2>
+    <div class="steps">
+      <div class="step"><div><h3>Abra Servicos</h3><p>Cadastre cortes, barba, sobrancelha, pigmentacao ou qualquer outro servico da barbearia.</p></div></div>
+      <div class="step"><div><h3>Informe preco</h3><p>O valor cadastrado sera usado automaticamente na hora de criar o agendamento.</p></div></div>
+      <div class="step"><div><h3>Edite quando precisar</h3><p>Se o preco mudar, edite o servico para manter os proximos agendamentos corretos.</p></div></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>4. Criar Agendamentos</h2>
+    <div class="grid">
+      <div class="card"><strong>Escolha o cliente</strong><p>Selecione um cliente ja cadastrado.</p></div>
+      <div class="card"><strong>Escolha os servicos</strong><p>Marque um ou mais servicos para compor o atendimento.</p></div>
+      <div class="card"><strong>Defina data e pagamento</strong><p>Informe data, forma de pagamento e observacoes se necessario.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>5. Finalizar Atendimento</h2>
+    <div class="steps">
+      <div class="step"><div><h3>Confira o agendamento</h3><p>Antes de finalizar, veja cliente, servicos e valor total.</p></div></div>
+      <div class="step"><div><h3>Marque como finalizado</h3><p>O atendimento sai da agenda ativa e vai para o historico.</p></div></div>
+      <div class="step"><div><h3>Consulte depois</h3><p>Use o historico para ver atendimentos anteriores e valores recebidos.</p></div></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>6. Painel Admin Master</h2>
+    <div class="grid">
+      <div class="card"><strong>Cadastrar barbearia</strong><p>Cria o acesso do cliente e gera a licenca remota.</p></div>
+      <div class="card"><strong>Assinatura</strong><p>Clientes mensais bloqueiam se vencerem ou forem marcados como vencidos.</p></div>
+      <div class="card"><strong>Pagamento completo</strong><p>Clientes desse tipo nao bloqueiam por data, mas ainda podem ser bloqueados manualmente.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>7. Suporte e Backup</h2>
+    <div class="steps">
+      <div class="step"><div><h3>Backup no Windows</h3><p>Copie o arquivo <strong>database.sqlite</strong> com o sistema fechado.</p></div></div>
+      <div class="step"><div><h3>Atualizacao</h3><p>Receba uma nova versao do APK ou da pasta Windows e instale por cima quando indicado.</p></div></div>
+      <div class="step"><div><h3>Licenca</h3><p>Se o sistema bloquear, entre em contato com o suporte para regularizar o acesso.</p></div></div>
+    </div>
+  </section>
+
+  <footer>
+    Sistema Barber - guia de uso para cliente. Este arquivo pode ser aberto no navegador e impresso em PDF.
+  </footer>
+</body>
+</html>

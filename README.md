@@ -49,6 +49,7 @@ backend/dist
 Para entregar em um PC Windows, copie a pasta `backend/dist` inteira. Ela contem:
 
 - `server.exe`: aplicativo local.
+- `better_sqlite3.node`: componente nativo do banco local.
 - `frontend/`: telas do sistema.
 - `.env`: configuracao local.
 - `database.sqlite`: banco criado no primeiro uso.
@@ -72,8 +73,8 @@ android-standalone/dist/SistemaBarber-standalone-debug.apk
 Esse APK roda sem servidor e salva os dados no proprio armazenamento do aplicativo no Android. O acesso inicial dentro do APK e:
 
 ```text
-Acesso: localadmin
-Senha: localadmin123
+Acesso: pedroyuuki2008
+Senha: pedroyuuki2008
 ```
 
 Para instalar, copie o APK para o celular e abra o arquivo. O Android pode pedir permissao para instalar apps de fontes desconhecidas.
@@ -164,8 +165,8 @@ Fluxo recomendado:
 O primeiro superadmin local e criado pelo `npm run db:init` usando as variaveis do `backend/.env`:
 
 ```env
-DEFAULT_SUPERADMIN_EMAIL=localadmin
-DEFAULT_SUPERADMIN_PASSWORD=localadmin123
+DEFAULT_SUPERADMIN_EMAIL=pedroyuuki2008
+DEFAULT_SUPERADMIN_PASSWORD=pedroyuuki2008
 ```
 
 Troque essas credenciais antes de entregar o sistema para um cliente.
@@ -199,9 +200,9 @@ FRONTEND_URL=http://localhost:4000
 PORT=4000
 NODE_ENV=development
 ENABLE_PUBLIC_REGISTRATION=false
-DEFAULT_SUPERADMIN_NAME=Admin Local
-DEFAULT_SUPERADMIN_EMAIL=localadmin
-DEFAULT_SUPERADMIN_PASSWORD=localadmin123
+DEFAULT_SUPERADMIN_NAME=Admin Inicial
+DEFAULT_SUPERADMIN_EMAIL=pedroyuuki2008
+DEFAULT_SUPERADMIN_PASSWORD=pedroyuuki2008
 ```
 
 ## Backup

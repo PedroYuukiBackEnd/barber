@@ -40,9 +40,9 @@ async function tableColumns(tableName) {
 }
 
 async function seedDefaultSuperadmin() {
-  const adminName = process.env.DEFAULT_SUPERADMIN_NAME || 'Admin Local';
-  const adminEmail = process.env.DEFAULT_SUPERADMIN_EMAIL || 'localadmin';
-  const adminPassword = process.env.DEFAULT_SUPERADMIN_PASSWORD || 'localadmin123';
+  const adminName = process.env.DEFAULT_SUPERADMIN_NAME || 'Admin Inicial';
+  const adminEmail = process.env.DEFAULT_SUPERADMIN_EMAIL || 'pedroyuuki2008';
+  const adminPassword = process.env.DEFAULT_SUPERADMIN_PASSWORD || 'pedroyuuki2008';
   const tenantName = process.env.DEFAULT_PLATFORM_TENANT_NAME || 'Plataforma Local';
 
   const existingUser = await get('SELECT id FROM users WHERE email = ?', [adminEmail]);

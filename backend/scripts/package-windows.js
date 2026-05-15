@@ -7,6 +7,8 @@ const projectDir = path.join(backendDir, '..');
 const distDir = path.join(backendDir, 'dist');
 const frontendSource = path.join(projectDir, 'frontend');
 const frontendTarget = path.join(distDir, 'frontend');
+const sqliteBindingSource = path.join(backendDir, 'node_modules', 'better-sqlite3', 'build', 'Release', 'better_sqlite3.node');
+const sqliteBindingTarget = path.join(distDir, 'better_sqlite3.node');
 
 function copyDirectory(source, target) {
   fs.mkdirSync(target, { recursive: true });
@@ -40,6 +42,10 @@ if (fs.existsSync(frontendTarget)) {
   fs.rmSync(frontendTarget, { recursive: true, force: true });
 }
 copyDirectory(frontendSource, frontendTarget);
+
+if (fs.existsSync(sqliteBindingSource)) {
+  fs.copyFileSync(sqliteBindingSource, sqliteBindingTarget);
+}
 
 const envExample = path.join(backendDir, '.env.example');
 const distEnv = path.join(distDir, '.env');
