@@ -179,16 +179,17 @@
     }
     .tag.warn { background: var(--warning); }
     .tag.danger { background: var(--danger); }
-    .credentials {
+    .access-box {
       display: grid;
       gap: 8px;
       padding: 18px;
       border: 1px dashed var(--line);
       border-radius: 8px;
       background: #101014;
-      font-family: Consolas, monospace;
-      font-size: 18px;
       color: var(--text);
+    }
+    .access-box strong {
+      font-size: 18px;
     }
     .note {
       margin-top: 16px;
@@ -219,7 +220,7 @@
       header { min-height: auto; }
       p, footer, .eyebrow { color: #333; }
       section { break-inside: avoid; }
-      .card, .step, .mock, .credentials, .note, .row { background: #fff; color: #111; border-color: #ccc; }
+      .card, .step, .mock, .access-box, .note, .row { background: #fff; color: #111; border-color: #ccc; }
       .mock-top { background: #eee; }
       .quick-nav { display: none; }
     }
@@ -230,15 +231,15 @@
     <div class="wrap">
       <div class="eyebrow">Manual do cliente</div>
       <h1>Como usar o painel da barbearia</h1>
-      <p class="lead">Este guia ensina o uso completo do painel que fica na barbearia: clientes, servicos, agenda, pagamentos, historico, personalizacao e suporte.</p>
+      <p class="lead">Este guia ensina o uso completo do painel da barbearia: clientes, serviços, agenda, pagamentos, histórico, personalização, suporte e backup.</p>
       <nav class="quick-nav">
         <a class="pill" href="#entrar">Entrar</a>
         <a class="pill" href="#clientes">Clientes</a>
-        <a class="pill" href="#servicos">Servicos</a>
+        <a class="pill" href="#servicos">Serviços</a>
         <a class="pill" href="#agenda">Agenda</a>
         <a class="pill" href="#pagamentos">Pagamentos</a>
-        <a class="pill" href="#historico">Historico</a>
-        <a class="pill" href="#configuracoes">Configuracoes</a>
+        <a class="pill" href="#historico">Histórico</a>
+        <a class="pill" href="#configuracoes">Configurações</a>
         <a class="pill" href="#suporte">Suporte</a>
       </nav>
     </div>
@@ -249,59 +250,59 @@
       <div>
         <h2>1. Entrar no Sistema</h2>
         <div class="steps">
-          <div class="step"><div><h3>Abra o aplicativo</h3><p>No Android, toque no app Sistema Barber. No computador, execute o arquivo <strong>server.exe</strong> e abra <strong>http://localhost:4000</strong>.</p></div></div>
-          <div class="step"><div><h3>Digite o acesso</h3><p>Use o login e a senha iniciais abaixo. O acesso deve ser digitado exatamente como aparece.</p></div></div>
-          <div class="step"><div><h3>Confira a tela inicial</h3><p>Depois de entrar, use o menu para navegar entre Clientes, Servicos, Agenda, Historico e Configuracoes.</p></div></div>
+          <div class="step"><div><h3>Abra o aplicativo</h3><p>No Android, toque no aplicativo “Sistema Barber”. No computador, execute o arquivo “server.exe” e abra “http://localhost:4000” no navegador.</p></div></div>
+          <div class="step"><div><h3>Informe o acesso</h3><p>Digite o acesso e a senha enviados pelo suporte. Caso ainda não tenha recebido esses dados, solicite-os antes de iniciar o uso.</p></div></div>
+          <div class="step"><div><h3>Confira a tela inicial</h3><p>Depois de entrar, use o menu para navegar entre “Clientes”, “Serviços”, “Agenda”, “Histórico” e “Configurações”.</p></div></div>
         </div>
       </div>
-      <div class="credentials">
-        <div>Acesso inicial: pedroyuuki2008</div>
-        <div>Senha inicial: pedroyuuki2008</div>
+      <div class="access-box">
+        <strong>O acesso será enviado pelo suporte.</strong>
+        <p>Guarde seu login e sua senha em local seguro. Não compartilhe esses dados com pessoas que não devem acessar o painel da barbearia.</p>
       </div>
     </div>
-    <div class="note"><p>Se o sistema mostrar aviso de licenca ou assinatura, entre em contato com o suporte que forneceu o sistema.</p></div>
+    <div class="note"><p>Se o sistema mostrar um aviso de licença, assinatura ou bloqueio, entre em contato com o suporte que forneceu o sistema.</p></div>
   </section>
 
   <section id="clientes">
     <h2>2. Clientes</h2>
     <div class="grid">
-      <div class="card"><strong>Novo cliente</strong><p>Clique em Novo Cliente, informe nome, telefone e observacoes importantes.</p></div>
-      <div class="card"><strong>Editar cliente</strong><p>Use Editar quando o telefone mudar ou quando quiser adicionar alguma observacao.</p></div>
-      <div class="card"><strong>Excluir cliente</strong><p>Use somente quando tiver certeza. Clientes removidos podem afetar consultas futuras.</p></div>
+      <div class="card"><strong>Novo cliente</strong><p>Clique em “Novo Cliente” e informe nome, telefone e observações importantes.</p></div>
+      <div class="card"><strong>Editar cliente</strong><p>Use “Editar” quando o telefone mudar ou quando quiser adicionar alguma observação ao cadastro.</p></div>
+      <div class="card"><strong>Excluir cliente</strong><p>Use “Excluir” somente quando tiver certeza. Clientes removidos podem afetar consultas futuras.</p></div>
     </div>
     <div class="mock">
       <div class="mock-top"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
       <div class="mock-body">
-        <div class="row"><span>Nome do cliente</span><span class="tag">Obrigatorio</span></div>
-        <div class="row"><span>Telefone para contato</span><span class="tag warn">Recomendado</span></div>
-        <div class="row"><span>Observacoes, preferencias ou alergias</span><span class="tag warn">Opcional</span></div>
+        <div class="row"><span>Nome do cliente.</span><span class="tag">Obrigatório</span></div>
+        <div class="row"><span>Telefone para contato.</span><span class="tag warn">Recomendado</span></div>
+        <div class="row"><span>Observações, preferências ou alergias.</span><span class="tag warn">Opcional</span></div>
       </div>
     </div>
   </section>
 
   <section id="servicos">
-    <h2>3. Servicos e Precos</h2>
+    <h2>3. Serviços e Preços</h2>
     <div class="steps">
-      <div class="step"><div><h3>Cadastrar servico</h3><p>Abra a area Servicos e cadastre cortes, barba, sobrancelha, pigmentacao, pacote completo ou qualquer outro atendimento.</p></div></div>
-      <div class="step"><div><h3>Informar preco</h3><p>Coloque o valor correto. Esse preco entra automaticamente no total do agendamento.</p></div></div>
-      <div class="step"><div><h3>Atualizar tabela</h3><p>Quando a barbearia mudar os precos, edite o servico antes de criar novos agendamentos.</p></div></div>
+      <div class="step"><div><h3>Cadastrar serviço</h3><p>Abra a área “Serviços” e cadastre cortes, barba, sobrancelha, pigmentação, pacote completo ou qualquer outro atendimento oferecido pela barbearia.</p></div></div>
+      <div class="step"><div><h3>Informar preço</h3><p>Coloque o valor correto. Esse preço entra automaticamente no total do agendamento.</p></div></div>
+      <div class="step"><div><h3>Atualizar tabela</h3><p>Quando a barbearia alterar os preços, edite o serviço antes de criar novos agendamentos.</p></div></div>
     </div>
-    <div class="note"><p>Dica: mantenha nomes simples, por exemplo: Corte, Barba, Corte + Barba, Sobrancelha.</p></div>
+    <div class="note"><p>Dica: mantenha nomes simples, por exemplo: “Corte”, “Barba”, “Corte + Barba” e “Sobrancelha”.</p></div>
   </section>
 
   <section id="agenda">
     <h2>4. Agendamentos</h2>
     <div class="grid">
-      <div class="card"><strong>Criar agendamento</strong><p>Escolha o cliente, a data, os servicos e confirme o valor total.</p></div>
-      <div class="card"><strong>Evitar duplicidade</strong><p>Se o cliente ja tiver agendamento aberto, o sistema pode avisar antes de cadastrar outro.</p></div>
-      <div class="card"><strong>Editar horario</strong><p>Se o cliente remarcar, edite o agendamento em vez de criar outro desnecessario.</p></div>
+      <div class="card"><strong>Criar agendamento</strong><p>Escolha o cliente, a data, os serviços e confirme o valor total.</p></div>
+      <div class="card"><strong>Evitar duplicidade</strong><p>Se o cliente já tiver um agendamento aberto, o sistema pode avisar antes de cadastrar outro.</p></div>
+      <div class="card"><strong>Editar horário</strong><p>Se o cliente remarcar, edite o agendamento existente em vez de criar outro desnecessário.</p></div>
     </div>
     <div class="mock">
       <div class="mock-top"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
       <div class="mock-body">
-        <div class="row"><span>Cliente selecionado</span><span class="tag">Passo 1</span></div>
-        <div class="row"><span>Servicos escolhidos</span><span class="tag">Passo 2</span></div>
-        <div class="row"><span>Data, pagamento e observacoes</span><span class="tag">Passo 3</span></div>
+        <div class="row"><span>Cliente selecionado.</span><span class="tag">Passo 1</span></div>
+        <div class="row"><span>Serviços escolhidos.</span><span class="tag">Passo 2</span></div>
+        <div class="row"><span>Data, pagamento e observações.</span><span class="tag">Passo 3</span></div>
       </div>
     </div>
   </section>
@@ -309,57 +310,57 @@
   <section id="pagamentos">
     <h2>5. Pagamentos</h2>
     <div class="steps">
-      <div class="step"><div><h3>Escolha a forma de pagamento</h3><p>Informe se o cliente pagou em dinheiro, Pix, cartao ou outra forma configurada.</p></div></div>
-      <div class="step"><div><h3>Marque o status</h3><p>Use A Pagar quando ainda nao recebeu e Ja Pago quando o valor ja entrou.</p></div></div>
-      <div class="step"><div><h3>Anexe comprovante se precisar</h3><p>Quando houver Pix ou comprovante, use o campo de anexo para manter registro.</p></div></div>
+      <div class="step"><div><h3>Escolha a forma de pagamento</h3><p>Informe se o cliente pagou em dinheiro, Pix, cartão ou outra forma aceita pela barbearia.</p></div></div>
+      <div class="step"><div><h3>Marque o status</h3><p>Use “A pagar” quando ainda não recebeu e “Já pago” quando o valor já tiver sido recebido.</p></div></div>
+      <div class="step"><div><h3>Anexe o comprovante, se necessário</h3><p>Quando houver Pix ou outro comprovante, use o campo de anexo para manter o registro no atendimento.</p></div></div>
     </div>
   </section>
 
   <section id="finalizar">
     <h2>6. Finalizar Atendimento</h2>
     <div class="grid">
-      <div class="card"><strong>Conferir</strong><p>Antes de finalizar, veja cliente, servicos, valor, data e pagamento.</p></div>
-      <div class="card"><strong>Finalizar</strong><p>Ao finalizar, o atendimento sai da agenda ativa e vai para o Historico.</p></div>
-      <div class="card"><strong>Cancelar ou excluir</strong><p>Use apenas quando o atendimento nao deve ficar registrado como concluido.</p></div>
+      <div class="card"><strong>Conferir</strong><p>Antes de finalizar, confira cliente, serviços, valor, data e pagamento.</p></div>
+      <div class="card"><strong>Finalizar</strong><p>Ao finalizar, o atendimento sai da agenda ativa e vai para o “Histórico”.</p></div>
+      <div class="card"><strong>Cancelar ou excluir</strong><p>Use essa opção apenas quando o atendimento não deve ficar registrado como concluído.</p></div>
     </div>
   </section>
 
   <section id="historico">
-    <h2>7. Historico</h2>
+    <h2>7. Histórico</h2>
     <div class="steps">
-      <div class="step"><div><h3>Consultar atendimentos antigos</h3><p>Use o historico para verificar quais servicos foram feitos para cada cliente.</p></div></div>
+      <div class="step"><div><h3>Consultar atendimentos antigos</h3><p>Use o histórico para verificar quais serviços foram realizados para cada cliente.</p></div></div>
       <div class="step"><div><h3>Conferir recebimentos</h3><p>Veja valores, formas de pagamento e status dos atendimentos finalizados.</p></div></div>
-      <div class="step"><div><h3>Acompanhar frequencia</h3><p>O historico ajuda a lembrar quando o cliente cortou pela ultima vez.</p></div></div>
+      <div class="step"><div><h3>Acompanhar frequência</h3><p>O histórico ajuda a lembrar quando o cliente foi atendido pela última vez.</p></div></div>
     </div>
   </section>
 
   <section id="configuracoes">
-    <h2>8. Configuracoes da Barbearia</h2>
+    <h2>8. Configurações da Barbearia</h2>
     <div class="grid">
-      <div class="card"><strong>Nome da barbearia</strong><p>Atualize o nome exibido no sistema.</p></div>
-      <div class="card"><strong>Cores do painel</strong><p>Ajuste a cor principal e a borda para combinar com a identidade da barbearia.</p></div>
+      <div class="card"><strong>Nome da barbearia</strong><p>Atualize o nome exibido no sistema sempre que necessário.</p></div>
+      <div class="card"><strong>Cores do painel</strong><p>Ajuste a cor principal e a borda para combinar com a identidade visual da barbearia.</p></div>
       <div class="card"><strong>Comprovante Pix</strong><p>Se desejar, exija comprovante antes de finalizar atendimentos pagos via Pix.</p></div>
     </div>
-    <div class="note"><p>Evite alterar configuracoes durante atendimento movimentado. Faca ajustes em horarios tranquilos.</p></div>
+    <div class="note"><p>Evite alterar configurações durante horários de grande movimento. Faça ajustes em momentos mais tranquilos.</p></div>
   </section>
 
   <section id="suporte">
-    <h2>9. Suporte, Bugs e Recomendacoes</h2>
+    <h2>9. Suporte, Bugs e Recomendações</h2>
     <div class="steps">
-      <div class="step"><div><h3>Enviar recomendacao</h3><p>Use quando tiver sugestao de melhoria, nova funcao ou ajuste visual.</p></div></div>
-      <div class="step"><div><h3>Reportar bug</h3><p>Descreva o problema com clareza. Se puder, anexe imagem ou comprovante do erro.</p></div></div>
-      <div class="step"><div><h3>Aguardar retorno</h3><p>O suporte analisa o relato e informa quando houver correcao ou orientacao.</p></div></div>
+      <div class="step"><div><h3>Enviar recomendação</h3><p>Use essa opção quando tiver uma sugestão de melhoria, uma nova função ou um ajuste visual.</p></div></div>
+      <div class="step"><div><h3>Reportar bug</h3><p>Descreva o problema com clareza. Se possível, anexe uma imagem ou um comprovante do erro.</p></div></div>
+      <div class="step"><div><h3>Aguardar retorno</h3><p>O suporte analisará o relato e informará quando houver correção, orientação ou atualização disponível.</p></div></div>
     </div>
   </section>
 
   <section id="backup">
     <h2>10. Backup e Cuidados</h2>
     <div class="grid">
-      <div class="card"><strong>No Windows</strong><p>Com o sistema fechado, copie o arquivo <strong>database.sqlite</strong> da pasta Windows.</p></div>
-      <div class="card"><strong>No Android</strong><p>Evite desinstalar o app sem antes falar com o suporte, pois dados locais podem ser apagados.</p></div>
-      <div class="card"><strong>Atualizacoes</strong><p>Quando receber nova versao, siga a orientacao do suporte para instalar corretamente.</p></div>
+      <div class="card"><strong>No Windows</strong><p>Com o sistema fechado, copie o arquivo “database.sqlite” da pasta “Windows”.</p></div>
+      <div class="card"><strong>No Android</strong><p>Evite desinstalar o aplicativo sem antes falar com o suporte, pois dados locais podem ser apagados.</p></div>
+      <div class="card"><strong>Atualizações</strong><p>Quando receber uma nova versão, siga a orientação do suporte para instalar corretamente.</p></div>
     </div>
-    <div class="note"><p>Importante: nao apague os arquivos da pasta Windows. O executavel precisa da pasta frontend, do banco e do arquivo better_sqlite3.node.</p></div>
+    <div class="note"><p>Importante: não apague os arquivos da pasta “Windows”. O executável precisa da pasta “frontend”, do banco de dados e do arquivo “better_sqlite3.node”.</p></div>
   </section>
 
   <footer>
