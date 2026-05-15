@@ -12,3 +12,4 @@ android-standalone/keystore.properties
 android-standalone/release-key.jks
 android-standalone/.gradle
 android-standalone/app/build
+private-backups
