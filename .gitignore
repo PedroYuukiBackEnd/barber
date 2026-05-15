@@ -8,5 +8,7 @@ android-sdk
 tmp
 tools
 android-standalone/local.properties
+android-standalone/keystore.properties
+android-standalone/release-key.jks
 android-standalone/.gradle
 android-standalone/app/build

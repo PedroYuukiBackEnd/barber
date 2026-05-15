@@ -78,7 +78,19 @@ Senha: localadmin123
 
 Para instalar, copie o APK para o celular e abra o arquivo. O Android pode pedir permissao para instalar apps de fontes desconhecidas.
 
-Observacao: esse APK atual e uma build debug para teste/entrega direta. Para Play Store ou venda em escala, gere uma build release assinada com uma chave definitiva.
+Para teste rapido, use:
+
+```text
+android-standalone/dist/SistemaBarber-standalone-debug.apk
+```
+
+Para entregar para cliente, use a build release assinada:
+
+```text
+android-standalone/dist/SistemaBarber-standalone-release.apk
+```
+
+A chave de assinatura fica em `android-standalone/release-key.jks` e `android-standalone/keystore.properties`. Esses arquivos sao ignorados pelo Git. Guarde backup deles em local seguro, porque sem essa chave voce nao consegue publicar atualizacoes por cima do mesmo app instalado.
 
 No iPhone, a distribuicao nativa e `.ipa`/TestFlight/App Store, nao `.dmg`. `.dmg` e formato de instalador para macOS.
 
@@ -93,6 +105,47 @@ Regras:
 - Cliente com `billing_type=full_payment`: precisa ter `status=ativo`, mas nao bloqueia por `vence_em`.
 - `status=bloqueado` ou `status=vencido` bloqueia qualquer cliente comum.
 - Sem internet, o app permite uso por ate 3 dias somente se houver uma validacao ativa recente salva no aparelho.
+
+No pacote Windows/local, a mesma validacao acontece no backend quando `SUPABASE_URL` e `SUPABASE_ANON_KEY` estiverem configurados no `.env`.
+
+O painel master grava no Supabase somente pelo backend, usando `SUPABASE_SERVICE_ROLE_KEY`. Essa chave deve ficar apenas no seu computador/painel master e nunca deve ir para o APK ou para a instalacao do cliente.
+
+Prepare o Supabase com:
+
+```text
+docs/supabase-licenses.sql
+```
+
+Variaveis do painel master:
+
+```env
+SUPABASE_URL=https://SEU-PROJETO.supabase.co
+SUPABASE_ANON_KEY=sua_anon_public_key
+SUPABASE_SERVICE_ROLE_KEY=sua_service_role_key
+SUPABASE_LICENSE_TABLE=clientes
+```
+
+Variaveis da instalacao do cliente Windows:
+
+```env
+SUPABASE_URL=https://SEU-PROJETO.supabase.co
+SUPABASE_ANON_KEY=sua_anon_public_key
+SUPABASE_LICENSE_TABLE=clientes
+```
+
+Nao coloque `SUPABASE_SERVICE_ROLE_KEY` no computador do cliente.
+
+## Status de venda
+
+Antes de entregar a cliente real:
+
+1. Troque `DEFAULT_SUPERADMIN_EMAIL` e `DEFAULT_SUPERADMIN_PASSWORD`.
+2. Configure Supabase no painel master com a `service_role`.
+3. Cadastre a barbearia pelo painel master.
+4. Confirme se a linha apareceu na tabela `clientes`.
+5. Entregue APK release assinado ou pacote Windows com `.env` de cliente.
+6. Guarde backup da chave Android `release-key.jks`.
+7. Faça um backup inicial do banco local do cliente depois da configuracao.
 
 ## Atualizacoes e localhost
 

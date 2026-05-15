@@ -3,6 +3,13 @@ const { createTenant } = require('../models/tenantModel');
 const { createUser, updateUser } = require('../models/userModel');
 const { normalizeAttachment } = require('../utils/attachment');
 const { hashPassword } = require('../utils/password');
+const {
+  addDaysFromNow,
+  syncActiveLicense,
+  blockLicense,
+  markLicensePaid,
+  markLicenseUnpaid,
+} = require('../services/licenseSyncService');
 
 const ALLOWED_ROLES = ['superadmin', 'user'];
 const ALLOWED_BILLING_TYPES = ['subscription', 'full_payment'];
@@ -212,7 +219,12 @@ async function markUserBillingPaid(req, res, next) {
       return res.status(404).json({ message: 'Usuario nao encontrado.' });
     }
 
-    res.json({ user: buildUserBillingInfo(users[0]) });
+    const user = buildUserBillingInfo(users[0]);
+    const licenseSync = user.role === 'superadmin'
+      ? { skipped: true, reason: 'Superadmin nao precisa de licenca remota.' }
+      : await (paid ? markLicensePaid(user) : markLicenseUnpaid(user));
+
+    res.json({ user, licenseSync });
   } catch (error) {
     next(error);
   }
@@ -225,7 +237,7 @@ async function deleteUser(req, res, next) {
       return res.status(400).json({ message: 'Voce nao pode excluir o proprio acesso.' });
     }
 
-    const users = await allQuery('SELECT id, role FROM users WHERE id = ?', [id]);
+    const users = await allQuery('SELECT id, role, email FROM users WHERE id = ?', [id]);
     if (!users.length) {
       return res.status(404).json({ message: 'Usuario nao encontrado.' });
     }
@@ -237,10 +249,14 @@ async function deleteUser(req, res, next) {
       }
     }
 
+    const licenseSync = users[0].role === 'superadmin'
+      ? { skipped: true, reason: 'Superadmin nao precisa de licenca remota.' }
+      : await blockLicense(users[0]);
+
     await runQuery('DELETE FROM users WHERE id = ?', [id]);
     await runQuery('DELETE FROM tenants WHERE id NOT IN (SELECT DISTINCT tenant_id FROM users)');
 
-    res.json({ message: 'Usuario excluido com sucesso.' });
+    res.json({ message: 'Usuario excluido com sucesso.', licenseSync });
   } catch (error) {
     next(error);
   }
@@ -279,8 +295,13 @@ async function registerTenant(req, res, next) {
     const passwordHash = hashPassword(password);
     const tenant = await createTenant(tenantName);
     const user = await createUser(tenant.id, name, email, passwordHash, 'user', adminNotes || '', selectedBillingType);
+    const licenseSync = await syncActiveLicense({
+      ...user,
+      tenant_name: tenant.name,
+      billing_type: selectedBillingType,
+    });
 
-    res.status(201).json({ user, tenant });
+    res.status(201).json({ user, tenant, licenseSync });
   } catch (error) {
     next(error);
   }
@@ -308,13 +329,45 @@ async function editUser(req, res, next) {
       passwordHash = hashPassword(password);
     }
 
+    const previousUsers = await allQuery(
+      `SELECT u.id, u.email, u.role, u.billing_type, t.name AS tenant_name
+       FROM users u
+       JOIN tenants t ON t.id = u.tenant_id
+       WHERE u.id = ?`,
+      [id]
+    );
+    if (!previousUsers.length) {
+      return res.status(404).json({ message: 'Usuario nao encontrado.' });
+    }
+
     const updated = await updateUser(id, name, email, role, billingType || 'subscription', adminNotes || '', passwordHash);
+    let licenseSync = { skipped: true, reason: 'Superadmin nao precisa de licenca remota.' };
     if (billingDays !== undefined && role !== 'superadmin') {
       const days = Math.max(0, Math.floor(Number(billingDays) || 0));
       const cycleStart = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
       await runQuery('UPDATE users SET billing_cycle_started_at = ?, billing_paid_at = NULL WHERE id = ?', [cycleStart, id]);
+      if (previousUsers[0].email !== email) {
+        await blockLicense(previousUsers[0]);
+      }
+      licenseSync = await syncActiveLicense({
+        ...updated,
+        tenant_name: previousUsers[0].tenant_name,
+      }, {
+        status: days >= 30 ? 'vencido' : 'ativo',
+        expiresAt: addDaysFromNow(Math.max(0, 30 - days)),
+      });
+    } else if (role !== 'superadmin') {
+      if (previousUsers[0].email !== email) {
+        await blockLicense(previousUsers[0]);
+      }
+      licenseSync = await syncActiveLicense({
+        ...updated,
+        tenant_name: previousUsers[0].tenant_name,
+      });
+    } else if (previousUsers[0].role !== 'superadmin') {
+      licenseSync = await blockLicense(previousUsers[0]);
     }
-    res.json({ user: updated });
+    res.json({ user: updated, licenseSync });
   } catch (error) {
     next(error);
   }

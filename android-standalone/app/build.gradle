@@ -2,6 +2,12 @@ plugins {
     id "com.android.application"
 }
 
+def keystorePropertiesFile = rootProject.file("keystore.properties")
+def keystoreProperties = new Properties()
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+}
+
 android {
     namespace "com.sistemabarber.standalone"
     compileSdk 35
@@ -13,6 +19,27 @@ android {
         versionCode 1
         versionName "1.0.0"
     }
+
+    signingConfigs {
+        release {
+            if (keystorePropertiesFile.exists()) {
+                storeFile rootProject.file(keystoreProperties["storeFile"])
+                storePassword keystoreProperties["storePassword"]
+                keyAlias keystoreProperties["keyAlias"]
+                keyPassword keystoreProperties["keyPassword"]
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            shrinkResources false
+            if (keystorePropertiesFile.exists()) {
+                signingConfig signingConfigs.release
+            }
+        }
+    }
 }
 
 tasks.register("copyDebugApkToDist", Copy) {
@@ -22,8 +49,18 @@ tasks.register("copyDebugApkToDist", Copy) {
     rename { "SistemaBarber-standalone-debug.apk" }
 }
 
+tasks.register("copyReleaseApkToDist", Copy) {
+    dependsOn("assembleRelease")
+    from("$buildDir/outputs/apk/release/app-release.apk")
+    into("$rootDir/dist")
+    rename { "SistemaBarber-standalone-release.apk" }
+}
+
 afterEvaluate {
     tasks.named("assembleDebug") {
         finalizedBy("copyDebugApkToDist")
+    }
+    tasks.named("assembleRelease") {
+        finalizedBy("copyReleaseApkToDist")
     }
 }

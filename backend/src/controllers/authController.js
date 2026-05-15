@@ -3,6 +3,7 @@ const db = require('../config/db');
 const { createTenant, getTenantById, updateTenant } = require('../models/tenantModel');
 const { getUserByEmail, getUserByEmailOrName, createUser, getUserById } = require('../models/userModel');
 const { hashPassword, verifyPassword } = require('../utils/password');
+const { verifyLicense } = require('../services/licenseValidationService');
 
 const TOKEN_NAME = 'token';
 
@@ -100,10 +101,15 @@ async function login(req, res, next) {
     }
 
     const tenant = await getTenantById(user.tenant_id);
+    const userWithBilling = await getUserWithBilling(user.id);
+    const license = await verifyLicense(userWithBilling || user);
+    if (!license.allowed) {
+      return res.status(403).json({ message: license.message });
+    }
+
     const token = createToken(user.id);
     sendToken(res, token);
 
-    const userWithBilling = await getUserWithBilling(user.id);
     return res.json({ user: buildUserBillingInfo(userWithBilling || user), tenant });
   } catch (error) {
     next(error);
@@ -119,6 +125,11 @@ async function me(req, res, next) {
   try {
     const user = await getUserWithBilling(req.user.id);
     const tenant = await getTenantById(req.user.tenant_id);
+    const license = await verifyLicense(user);
+    if (!license.allowed) {
+      res.clearCookie(TOKEN_NAME, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax' });
+      return res.status(403).json({ message: license.message });
+    }
     res.json({ user: buildUserBillingInfo(user), tenant });
   } catch (error) {
     next(error);
