@@ -14,11 +14,16 @@
     return new Date().toISOString();
   }
 
-  function loadDb() {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return JSON.parse(raw);
+  function normalizeAccess(value) {
+    return String(value || '').trim().toLowerCase();
+  }
 
-    const db = {
+  function normalizePassword(value) {
+    return String(value || '').trim();
+  }
+
+  function createDefaultDb() {
+    return {
       next: {
         tenant: 2,
         user: 2,
@@ -26,6 +31,10 @@
         service: 1,
         appointment: 1,
         history: 1,
+        employee: 1,
+        product: 1,
+        productSale: 1,
+        manualEarning: 1,
         recommendation: 1,
         bugReport: 1,
       },
@@ -57,11 +66,82 @@
       services: [],
       appointments: [],
       serviceHistory: [],
+      employees: [],
+      products: [],
+      productSales: [],
+      manualEarnings: [],
       recommendations: [],
       bugReports: [],
     };
+  }
+
+  function migrateDb(db) {
+    const fresh = createDefaultDb();
+    db.next = { ...fresh.next, ...(db.next || {}) };
+    db.tenants = Array.isArray(db.tenants) ? db.tenants : fresh.tenants;
+    db.users = Array.isArray(db.users) ? db.users : [];
+    db.clients = Array.isArray(db.clients) ? db.clients : [];
+    db.services = Array.isArray(db.services) ? db.services : [];
+    db.appointments = Array.isArray(db.appointments) ? db.appointments : [];
+    db.serviceHistory = Array.isArray(db.serviceHistory) ? db.serviceHistory : [];
+    db.employees = Array.isArray(db.employees) ? db.employees : [];
+    db.products = Array.isArray(db.products) ? db.products : [];
+    db.productSales = Array.isArray(db.productSales) ? db.productSales : [];
+    db.manualEarnings = Array.isArray(db.manualEarnings) ? db.manualEarnings : [];
+    db.recommendations = Array.isArray(db.recommendations) ? db.recommendations : [];
+    db.bugReports = Array.isArray(db.bugReports) ? db.bugReports : [];
+
+    if (!db.tenants.some((tenant) => tenant.id === 1)) {
+      db.tenants.unshift(fresh.tenants[0]);
+    }
+
+    const defaultAdmin = db.users.find((user) => normalizeAccess(user.email) === 'pedroyuuki2008' || normalizeAccess(user.name) === 'pedroyuuki2008');
+    if (defaultAdmin) {
+      Object.assign(defaultAdmin, {
+        tenant_id: 1,
+        name: defaultAdmin.name || 'Admin Inicial',
+        email: 'pedroyuuki2008',
+        password: 'pedroyuuki2008',
+        role: 'superadmin',
+        billing_type: defaultAdmin.billing_type || 'subscription',
+        billing_cycle_started_at: defaultAdmin.billing_cycle_started_at || now(),
+        created_at: defaultAdmin.created_at || now(),
+      });
+    } else {
+      db.users.unshift(fresh.users[0]);
+    }
+
+    const maxValues = {
+      tenant: db.tenants,
+      user: db.users,
+      client: db.clients,
+      service: db.services,
+      appointment: db.appointments,
+      history: db.serviceHistory,
+      employee: db.employees,
+      product: db.products,
+      productSale: db.productSales,
+      manualEarning: db.manualEarnings,
+      recommendation: db.recommendations,
+      bugReport: db.bugReports,
+    };
+    Object.entries(maxValues).forEach(([key, items]) => {
+      const maxId = items.reduce((max, item) => Math.max(max, Number(item.id) || 0), 0);
+      db.next[key] = Math.max(Number(db.next[key]) || 1, maxId + 1);
+    });
+
     saveDb(db);
     return db;
+  }
+
+  function loadDb() {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return migrateDb(createDefaultDb());
+    try {
+      return migrateDb(JSON.parse(raw));
+    } catch (_) {
+      return migrateDb(createDefaultDb());
+    }
   }
 
   function saveDb(db) {
@@ -132,7 +212,7 @@
   function servicesForAppointment(db, appointmentId) {
     const appointment = db.appointments.find((item) => item.id === Number(appointmentId));
     if (!appointment) return [];
-    return (appointment.service_ids || []).map((serviceId) => {
+    return (appointment.service_ids || []).map(Number).map((serviceId) => {
       const service = db.services.find((item) => item.id === Number(serviceId));
       return {
         service_id: serviceId,
@@ -143,7 +223,13 @@
   }
 
   function withAppointmentServices(db, appointment) {
-    return { ...appointment, services: servicesForAppointment(db, appointment.id) };
+    const employee = db.employees.find((item) => item.id === Number(appointment.employee_id));
+    return {
+      ...appointment,
+      employee_id: appointment.employee_id || null,
+      employee_name: employee?.name || appointment.employee_name || '',
+      services: servicesForAppointment(db, appointment.id),
+    };
   }
 
   function parseUrl(input) {
@@ -175,6 +261,7 @@
 
   function evaluateLicense(user, license) {
     if (!license) {
+      if (canUseLocalLicense(user)) return { allowed: true };
       return { allowed: false, message: 'Licenca nao encontrada. Entre em contato com o suporte.' };
     }
     if (license.status !== 'ativo') {
@@ -187,6 +274,17 @@
       return { allowed: false, message: 'Assinatura vencida. Entre em contato com o suporte para renovar.' };
     }
     return { allowed: true };
+  }
+
+  function getLocalBillingDays(user) {
+    const dayMs = 24 * 60 * 60 * 1000;
+    const start = new Date(user.billing_cycle_started_at || user.created_at || now()).getTime();
+    return Number.isFinite(start) ? Math.max(0, Math.floor((Date.now() - start) / dayMs)) : 0;
+  }
+
+  function canUseLocalLicense(user) {
+    if (!user || user.role === 'superadmin' || user.billing_type === 'full_payment') return true;
+    return getLocalBillingDays(user) < 30;
   }
 
   function getCachedLicense(code) {
@@ -234,6 +332,7 @@
       if (cachedResult.allowed && isInsideGracePeriod(cachedLicense)) {
         return { allowed: true };
       }
+      if (canUseLocalLicense(user)) return { allowed: true };
       return {
         allowed: false,
         message: 'Nao foi possivel validar a licenca pela internet. Conecte o aparelho e tente novamente.',
@@ -252,7 +351,9 @@
 
     try {
       if (path === '/api/auth/login' && method === 'POST') {
-        const user = db.users.find((item) => (item.email === body.email || item.name === body.email) && item.password === body.password);
+        const access = normalizeAccess(body.email);
+        const password = normalizePassword(body.password);
+        const user = db.users.find((item) => (normalizeAccess(item.email) === access || normalizeAccess(item.name) === access) && String(item.password || '') === password);
         if (!user) return jsonResponse({ message: 'Credenciais inválidas.' }, 401);
         const license = await verifyRemoteLicense(user);
         if (!license.allowed) return jsonResponse({ message: license.message }, 403);
@@ -305,7 +406,8 @@
       if (path === '/api/admin/register' && method === 'POST') {
         const session = requireSuperadmin(db);
         if (session.error) return jsonResponse(session.error, session.status);
-        if (db.users.some((user) => user.email === body.email)) return jsonResponse({ message: 'Email ja cadastrado.' }, 400);
+        const email = normalizeAccess(body.email);
+        if (db.users.some((user) => normalizeAccess(user.email) === email)) return jsonResponse({ message: 'Email ja cadastrado.' }, 400);
         const tenant = {
           id: db.next.tenant++,
           name: body.tenantName,
@@ -319,8 +421,8 @@
           id: db.next.user++,
           tenant_id: tenant.id,
           name: body.name,
-          email: body.email,
-          password: body.password,
+          email,
+          password: normalizePassword(body.password),
           role: 'user',
           billing_type: body.billingType || 'subscription',
           admin_notes: body.adminNotes || '',
@@ -339,13 +441,14 @@
       if (path === '/api/admin/users/admin' && method === 'POST') {
         const session = requireSuperadmin(db);
         if (session.error) return jsonResponse(session.error, session.status);
-        if (db.users.some((user) => user.email === body.email)) return jsonResponse({ message: 'Email ja cadastrado.' }, 400);
+        const email = normalizeAccess(body.email);
+        if (db.users.some((user) => normalizeAccess(user.email) === email)) return jsonResponse({ message: 'Email ja cadastrado.' }, 400);
         const user = {
           id: db.next.user++,
           tenant_id: session.user.tenant_id,
           name: body.name,
-          email: body.email,
-          password: body.password,
+          email,
+          password: normalizePassword(body.password),
           role: 'superadmin',
           billing_type: 'subscription',
           admin_notes: '',
@@ -368,12 +471,12 @@
         if (!user) return jsonResponse({ message: 'Usuario nao encontrado.' }, 404);
         Object.assign(user, {
           name: body.name,
-          email: body.email,
+          email: normalizeAccess(body.email),
           role: body.role,
           billing_type: body.billingType || user.billing_type,
           admin_notes: body.adminNotes || '',
         });
-        if (body.password) user.password = body.password;
+        if (body.password) user.password = normalizePassword(body.password);
         if (body.billingDays !== undefined && user.role !== 'superadmin') {
           user.billing_cycle_started_at = new Date(Date.now() - Number(body.billingDays || 0) * 24 * 60 * 60 * 1000).toISOString();
           user.billing_paid_at = null;
@@ -480,6 +583,52 @@
         }
       }
 
+      if (path === '/api/employees') {
+        if (method === 'GET') return jsonResponse({ employees: db.employees.filter((item) => item.tenant_id === tenantId).sort((a, b) => a.name.localeCompare(b.name)) });
+        if (method === 'POST') {
+          const employee = {
+            id: db.next.employee++,
+            tenant_id: tenantId,
+            name: String(body.name || '').trim(),
+            phone: body.phone || '',
+            notes: body.notes || '',
+            gender: body.gender || '',
+            specialty: body.specialty || '',
+            monthly_goal: Number(body.monthly_goal || 0),
+            created_at: now(),
+          };
+          db.employees.push(employee);
+          saveDb(db);
+          return jsonResponse({ employee }, 201);
+        }
+      }
+
+      const employeeMatch = path.match(/^\/api\/employees\/(\d+)$/);
+      if (employeeMatch) {
+        const employee = db.employees.find((item) => item.id === Number(employeeMatch[1]) && item.tenant_id === tenantId);
+        if (!employee) return jsonResponse({ message: 'Funcionario nao encontrado.' }, 404);
+        if (method === 'PUT') {
+          Object.assign(employee, {
+            name: String(body.name || '').trim(),
+            phone: body.phone || '',
+            notes: body.notes || '',
+            gender: body.gender || '',
+            specialty: body.specialty || '',
+            monthly_goal: Number(body.monthly_goal || 0),
+          });
+          saveDb(db);
+          return jsonResponse({ employee });
+        }
+        if (method === 'DELETE') {
+          db.employees = db.employees.filter((item) => item.id !== employee.id);
+          db.appointments.forEach((appointment) => {
+            if (Number(appointment.employee_id) === employee.id) appointment.employee_id = null;
+          });
+          saveDb(db);
+          return jsonResponse({ message: 'Funcionario removido.' });
+        }
+      }
+
       if (path === '/api/services') {
         if (method === 'GET') return jsonResponse({ services: db.services.filter((item) => item.tenant_id === tenantId).sort((a, b) => a.name.localeCompare(b.name)) });
         if (method === 'POST') {
@@ -506,18 +655,148 @@
         }
       }
 
+      if (path === '/api/inventory/products') {
+        if (method === 'GET') return jsonResponse({ products: db.products.filter((item) => item.tenant_id === tenantId).sort((a, b) => a.name.localeCompare(b.name)) });
+        if (method === 'POST') {
+          const product = {
+            id: db.next.product++,
+            tenant_id: tenantId,
+            name: String(body.name || '').trim(),
+            quantity: Number(body.quantity || 0),
+            unit_label: String(body.unit_label || 'un.').trim() || 'un.',
+            sale_price: Number(body.sale_price || 0),
+            cost_price: Number(body.cost_price || 0),
+            notes: body.notes || '',
+            created_at: now(),
+          };
+          db.products.push(product);
+          saveDb(db);
+          return jsonResponse({ product }, 201);
+        }
+      }
+
+      const productMatch = path.match(/^\/api\/inventory\/products\/(\d+)$/);
+      if (productMatch) {
+        const product = db.products.find((item) => item.id === Number(productMatch[1]) && item.tenant_id === tenantId);
+        if (!product) return jsonResponse({ message: 'Produto nao encontrado.' }, 404);
+        if (method === 'PUT') {
+          Object.assign(product, {
+            name: String(body.name || '').trim(),
+            quantity: Number(body.quantity || 0),
+            unit_label: String(body.unit_label || 'un.').trim() || 'un.',
+            sale_price: Number(body.sale_price || 0),
+            cost_price: Number(body.cost_price || 0),
+            notes: body.notes || '',
+          });
+          saveDb(db);
+          return jsonResponse({ product });
+        }
+        if (method === 'DELETE') {
+          db.products = db.products.filter((item) => item.id !== product.id);
+          saveDb(db);
+          return jsonResponse({ message: 'Produto removido.' });
+        }
+      }
+
+      if (path === '/api/inventory/sales' && method === 'GET') {
+        return jsonResponse({ sales: db.productSales.filter((item) => item.tenant_id === tenantId).sort((a, b) => String(b.sold_at).localeCompare(String(a.sold_at))) });
+      }
+
+      const productSaleMatch = path.match(/^\/api\/inventory\/products\/(\d+)\/sell$/);
+      if (productSaleMatch && method === 'POST') {
+        const product = db.products.find((item) => item.id === Number(productSaleMatch[1]) && item.tenant_id === tenantId);
+        if (!product) return jsonResponse({ message: 'Produto nao encontrado.' }, 404);
+        const quantity = Number(body.quantity || 0);
+        if (!Number.isFinite(quantity) || quantity <= 0) return jsonResponse({ message: 'Informe uma quantidade maior que zero.' }, 400);
+        if (Number(product.quantity || 0) < quantity) return jsonResponse({ message: 'Estoque insuficiente para esta venda.' }, 400);
+        product.quantity = Number(product.quantity || 0) - quantity;
+        const salePrice = Number(product.sale_price || 0);
+        const costPrice = Number(product.cost_price || 0);
+        const sale = {
+          id: db.next.productSale++,
+          tenant_id: tenantId,
+          product_id: product.id,
+          product_name: product.name,
+          quantity,
+          unit_label: product.unit_label || 'un.',
+          sale_price: salePrice,
+          cost_price: costPrice,
+          gross_total: salePrice * quantity,
+          cost_total: costPrice * quantity,
+          profit_total: (salePrice - costPrice) * quantity,
+          sold_at: body.sold_at || now().slice(0, 10),
+          created_at: now(),
+        };
+        db.productSales.push(sale);
+        saveDb(db);
+        return jsonResponse({ sale }, 201);
+      }
+
+      const saleMatch = path.match(/^\/api\/inventory\/sales\/(\d+)$/);
+      if (saleMatch && method === 'DELETE') {
+        const sale = db.productSales.find((item) => item.id === Number(saleMatch[1]) && item.tenant_id === tenantId);
+        if (!sale) return jsonResponse({ message: 'Venda nao encontrada.' }, 404);
+        const product = db.products.find((item) => item.id === Number(sale.product_id) && item.tenant_id === tenantId);
+        if (product) product.quantity = Number(product.quantity || 0) + Number(sale.quantity || 0);
+        db.productSales = db.productSales.filter((item) => item.id !== sale.id);
+        saveDb(db);
+        return jsonResponse({ message: 'Venda removida e estoque restaurado.' });
+      }
+
+      if (path === '/api/earnings') {
+        if (method === 'GET') {
+          return jsonResponse({ earnings: db.manualEarnings.filter((item) => item.tenant_id === tenantId).sort((a, b) => String(b.entry_date).localeCompare(String(a.entry_date))) });
+        }
+        if (method === 'POST') {
+          const earning = {
+            id: db.next.manualEarning++,
+            tenant_id: tenantId,
+            description: String(body.description || '').trim(),
+            amount: Number(body.amount || 0),
+            entry_date: body.entry_date || now().slice(0, 10),
+            created_at: now(),
+          };
+          db.manualEarnings.push(earning);
+          saveDb(db);
+          return jsonResponse({ earning }, 201);
+        }
+      }
+
+      const earningMatch = path.match(/^\/api\/earnings\/(\d+)$/);
+      if (earningMatch && method === 'DELETE') {
+        const id = Number(earningMatch[1]);
+        const earning = db.manualEarnings.find((item) => item.id === id && item.tenant_id === tenantId);
+        if (!earning) return jsonResponse({ message: 'Ganho nao encontrado.' }, 404);
+        db.manualEarnings = db.manualEarnings.filter((item) => item.id !== id);
+        saveDb(db);
+        return jsonResponse({ message: 'Ganho removido.' });
+      }
+
       if (path === '/api/appointments/history' && method === 'GET') {
         return jsonResponse({ history: db.serviceHistory.filter((item) => item.tenant_id === tenantId).sort((a, b) => String(b.completed_at).localeCompare(String(a.completed_at))) });
+      }
+
+      const historyMatch = path.match(/^\/api\/appointments\/history\/(\d+)$/);
+      if (historyMatch && method === 'DELETE') {
+        const id = Number(historyMatch[1]);
+        const history = db.serviceHistory.find((item) => item.id === id && item.tenant_id === tenantId);
+        if (!history) return jsonResponse({ message: 'Historico nao encontrado.' }, 404);
+        db.serviceHistory = db.serviceHistory.filter((item) => item.id !== id);
+        saveDb(db);
+        return jsonResponse({ message: 'Historico removido.' });
       }
 
       if (path === '/api/appointments') {
         if (method === 'GET') return jsonResponse({ appointments: db.appointments.filter((item) => item.tenant_id === tenantId).map((item) => withAppointmentServices(db, item)) });
         if (method === 'POST') {
-          const services = db.services.filter((item) => item.tenant_id === tenantId && body.service_ids.includes(item.id));
+          const serviceIds = Array.isArray(body.service_ids) ? body.service_ids.map(Number) : [];
+          const employeeId = Number(body.employee_id) || null;
+          const services = db.services.filter((item) => item.tenant_id === tenantId && serviceIds.includes(item.id));
           const appointment = {
             id: db.next.appointment++,
             tenant_id: tenantId,
             client_id: Number(body.client_id),
+            employee_id: employeeId,
             appointment_date: body.appointment_date,
             total: services.reduce((sum, service) => sum + Number(service.price || 0), 0),
             payment_type: body.payment_type || 'dinheiro',
@@ -526,8 +805,9 @@
             payment_proof_data: body.payment_proof_data || '',
             note_attachment_name: body.note_attachment_name || '',
             note_attachment_data: body.note_attachment_data || '',
+            alarm_enabled: body.alarm_enabled ? 1 : 0,
             notes: body.notes || '',
-            service_ids: body.service_ids.map(Number),
+            service_ids: serviceIds,
             created_at: now(),
           };
           db.appointments.push(appointment);
@@ -541,9 +821,12 @@
         const appointment = db.appointments.find((item) => item.id === Number(appointmentMatch[1]) && item.tenant_id === tenantId);
         if (!appointment) return jsonResponse({ message: 'Agendamento nao encontrado.' }, 404);
         if (method === 'PUT') {
-          const services = db.services.filter((item) => item.tenant_id === tenantId && body.service_ids.includes(item.id));
+          const serviceIds = Array.isArray(body.service_ids) ? body.service_ids.map(Number) : [];
+          const employeeId = Number(body.employee_id) || null;
+          const services = db.services.filter((item) => item.tenant_id === tenantId && serviceIds.includes(item.id));
           Object.assign(appointment, {
             client_id: Number(body.client_id),
+            employee_id: employeeId,
             appointment_date: body.appointment_date,
             total: services.reduce((sum, service) => sum + Number(service.price || 0), 0),
             payment_type: body.payment_type || 'dinheiro',
@@ -552,8 +835,9 @@
             payment_proof_data: body.payment_proof_data || '',
             note_attachment_name: body.note_attachment_name || '',
             note_attachment_data: body.note_attachment_data || '',
+            alarm_enabled: body.alarm_enabled ? 1 : 0,
             notes: body.notes || '',
-            service_ids: body.service_ids.map(Number),
+            service_ids: serviceIds,
           });
           saveDb(db);
           return jsonResponse({ appointment: withAppointmentServices(db, appointment) });
@@ -574,12 +858,15 @@
           return jsonResponse({ message: 'Para finalizar trabalho pago via PIX, marque como ja pago e anexe o comprovante no agendamento.' }, 400);
         }
         const client = db.clients.find((item) => item.id === appointment.client_id);
+        const employee = db.employees.find((item) => item.id === Number(appointment.employee_id) && item.tenant_id === tenantId);
         const history = {
           id: db.next.history++,
           tenant_id: tenantId,
           appointment_id: appointment.id,
           client_name: client?.name || '',
           client_phone: client?.phone || '',
+          employee_id: employee?.id || null,
+          employee_name: employee?.name || '',
           appointment_date: appointment.appointment_date,
           total: appointment.total,
           payment_type: appointment.payment_type,

@@ -42,10 +42,51 @@ CREATE TABLE IF NOT EXISTS services (
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS employees (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  tenant_id INTEGER NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  phone TEXT DEFAULT '',
+  notes TEXT DEFAULT '',
+  gender TEXT DEFAULT '',
+  specialty TEXT DEFAULT '',
+  monthly_goal NUMERIC NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS inventory_products (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  tenant_id INTEGER NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  quantity NUMERIC NOT NULL DEFAULT 0,
+  unit_label TEXT NOT NULL DEFAULT 'un.',
+  sale_price NUMERIC NOT NULL DEFAULT 0,
+  cost_price NUMERIC NOT NULL DEFAULT 0,
+  notes TEXT DEFAULT '',
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS product_sales (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  tenant_id INTEGER NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  product_id INTEGER REFERENCES inventory_products(id) ON DELETE SET NULL,
+  product_name TEXT NOT NULL,
+  quantity NUMERIC NOT NULL DEFAULT 0,
+  unit_label TEXT NOT NULL DEFAULT 'un.',
+  sale_price NUMERIC NOT NULL DEFAULT 0,
+  cost_price NUMERIC NOT NULL DEFAULT 0,
+  gross_total NUMERIC NOT NULL DEFAULT 0,
+  cost_total NUMERIC NOT NULL DEFAULT 0,
+  profit_total NUMERIC NOT NULL DEFAULT 0,
+  sold_at TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE IF NOT EXISTS appointments (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   tenant_id INTEGER NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
   client_id INTEGER NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+  employee_id INTEGER REFERENCES employees(id) ON DELETE SET NULL,
   appointment_date TEXT NOT NULL,
   total NUMERIC NOT NULL DEFAULT 0,
   payment_type TEXT DEFAULT 'dinheiro',
@@ -54,6 +95,7 @@ CREATE TABLE IF NOT EXISTS appointments (
   payment_proof_data TEXT DEFAULT '',
   note_attachment_name TEXT DEFAULT '',
   note_attachment_data TEXT DEFAULT '',
+  alarm_enabled INTEGER NOT NULL DEFAULT 0,
   notes TEXT DEFAULT '',
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -98,6 +140,8 @@ CREATE TABLE IF NOT EXISTS service_history (
   appointment_id INTEGER,
   client_name TEXT NOT NULL,
   client_phone TEXT DEFAULT '',
+  employee_id INTEGER,
+  employee_name TEXT DEFAULT '',
   appointment_date TEXT NOT NULL,
   total NUMERIC NOT NULL DEFAULT 0,
   payment_type TEXT DEFAULT 'dinheiro',
@@ -109,4 +153,13 @@ CREATE TABLE IF NOT EXISTS service_history (
   notes TEXT DEFAULT '',
   services TEXT NOT NULL DEFAULT '[]',
   completed_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS manual_earnings (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  tenant_id INTEGER NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  amount NUMERIC NOT NULL DEFAULT 0,
+  description TEXT DEFAULT '',
+  entry_date TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );

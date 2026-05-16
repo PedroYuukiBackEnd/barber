@@ -24,9 +24,23 @@ function isDateExpired(dateValue) {
   return !Number.isFinite(expiresAt) || expiresAt < Date.now();
 }
 
+function getLocalBillingDays(user) {
+  const startedAt = new Date(user?.billing_cycle_started_at || user?.created_at).getTime();
+  if (!Number.isFinite(startedAt)) return 0;
+  return Math.max(0, Math.floor((Date.now() - startedAt) / (24 * 60 * 60 * 1000)));
+}
+
+function canUseLocalLicense(user) {
+  if ((user.billing_type || 'subscription') === 'full_payment') return true;
+  return getLocalBillingDays(user) < 30;
+}
+
 function evaluateLicense(user, license) {
   if (!license) {
-    return { allowed: false, message: 'Licenca nao encontrada. Entre em contato com o suporte.' };
+    if (canUseLocalLicense(user)) {
+      return { allowed: true, skipped: true, reason: 'Licenca remota ainda nao encontrada; usando validade local.' };
+    }
+    return { allowed: false, message: 'Assinatura vencida ou licenca nao encontrada. Entre em contato com o suporte.' };
   }
   if (license.status !== 'ativo') {
     return { allowed: false, message: 'Sistema bloqueado. Regularize sua assinatura para continuar.' };

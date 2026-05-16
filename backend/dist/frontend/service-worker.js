@@ -1,11 +1,14 @@
-const CACHE_NAME = 'sistema-barber-pwa-local-v1';
+const CACHE_NAME = 'sistema-barber-pwa-local-v5';
 const ASSETS = [
   '/',
   '/index.html',
   '/admin.html',
   '/styles.css',
   '/script.js',
-  '/manifest.json'
+  '/fullscreen.js',
+  '/manifest.json',
+  '/icons/icon-192.png',
+  '/icons/icon-512.png'
 ];
 
 self.addEventListener('install', (event) => {

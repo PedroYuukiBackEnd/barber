@@ -78,8 +78,11 @@ async function initDatabase() {
   await ensureUserColumns();
   await ensureRecommendationsTable();
   await ensureBugReportsTable();
+  await ensureEmployeesTable();
+  await ensureInventoryTables();
   await ensureAppointmentColumns();
   await ensureServiceHistoryTable();
+  await ensureManualEarningsTable();
   await seedDefaultSuperadmin();
   console.log('Banco de dados local pronto.');
 }
@@ -174,6 +177,9 @@ async function ensureBugReportsTable() {
 
 async function ensureAppointmentColumns() {
   const columnNames = await tableColumns('appointments');
+  if (!columnNames.includes('employee_id')) {
+    await run('ALTER TABLE appointments ADD COLUMN employee_id INTEGER REFERENCES employees(id) ON DELETE SET NULL');
+  }
   if (!columnNames.includes('payment_proof_name')) {
     await run("ALTER TABLE appointments ADD COLUMN payment_proof_name TEXT DEFAULT ''");
   }
@@ -186,6 +192,64 @@ async function ensureAppointmentColumns() {
   if (!columnNames.includes('note_attachment_data')) {
     await run("ALTER TABLE appointments ADD COLUMN note_attachment_data TEXT DEFAULT ''");
   }
+  if (!columnNames.includes('alarm_enabled')) {
+    await run('ALTER TABLE appointments ADD COLUMN alarm_enabled INTEGER NOT NULL DEFAULT 0');
+  }
+}
+
+async function ensureEmployeesTable() {
+  await exec(`
+    CREATE TABLE IF NOT EXISTS employees (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      tenant_id INTEGER NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+      name TEXT NOT NULL,
+      phone TEXT DEFAULT '',
+      notes TEXT DEFAULT '',
+      gender TEXT DEFAULT '',
+      specialty TEXT DEFAULT '',
+      monthly_goal NUMERIC NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
+  const columnNames = await tableColumns('employees');
+  if (!columnNames.includes('phone')) {
+    await run("ALTER TABLE employees ADD COLUMN phone TEXT DEFAULT ''");
+  }
+  if (!columnNames.includes('monthly_goal')) {
+    await run('ALTER TABLE employees ADD COLUMN monthly_goal NUMERIC NOT NULL DEFAULT 0');
+  }
+}
+
+async function ensureInventoryTables() {
+  await exec(`
+    CREATE TABLE IF NOT EXISTS inventory_products (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      tenant_id INTEGER NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+      name TEXT NOT NULL,
+      quantity NUMERIC NOT NULL DEFAULT 0,
+      unit_label TEXT NOT NULL DEFAULT 'un.',
+      sale_price NUMERIC NOT NULL DEFAULT 0,
+      cost_price NUMERIC NOT NULL DEFAULT 0,
+      notes TEXT DEFAULT '',
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS product_sales (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      tenant_id INTEGER NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+      product_id INTEGER REFERENCES inventory_products(id) ON DELETE SET NULL,
+      product_name TEXT NOT NULL,
+      quantity NUMERIC NOT NULL DEFAULT 0,
+      unit_label TEXT NOT NULL DEFAULT 'un.',
+      sale_price NUMERIC NOT NULL DEFAULT 0,
+      cost_price NUMERIC NOT NULL DEFAULT 0,
+      gross_total NUMERIC NOT NULL DEFAULT 0,
+      cost_total NUMERIC NOT NULL DEFAULT 0,
+      profit_total NUMERIC NOT NULL DEFAULT 0,
+      sold_at TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
 }
 
 async function ensureServiceHistoryTable() {
@@ -210,6 +274,12 @@ async function ensureServiceHistoryTable() {
     );
   `);
   const columnNames = await tableColumns('service_history');
+  if (!columnNames.includes('employee_id')) {
+    await run('ALTER TABLE service_history ADD COLUMN employee_id INTEGER');
+  }
+  if (!columnNames.includes('employee_name')) {
+    await run("ALTER TABLE service_history ADD COLUMN employee_name TEXT DEFAULT ''");
+  }
   if (!columnNames.includes('payment_proof_name')) {
     await run("ALTER TABLE service_history ADD COLUMN payment_proof_name TEXT DEFAULT ''");
   }
@@ -222,6 +292,19 @@ async function ensureServiceHistoryTable() {
   if (!columnNames.includes('note_attachment_data')) {
     await run("ALTER TABLE service_history ADD COLUMN note_attachment_data TEXT DEFAULT ''");
   }
+}
+
+async function ensureManualEarningsTable() {
+  await exec(`
+    CREATE TABLE IF NOT EXISTS manual_earnings (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      tenant_id INTEGER NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+      amount NUMERIC NOT NULL DEFAULT 0,
+      description TEXT DEFAULT '',
+      entry_date TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
 }
 
 if (require.main === module) {

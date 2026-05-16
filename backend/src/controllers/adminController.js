@@ -2,6 +2,7 @@ const db = require('../config/db');
 const { createTenant } = require('../models/tenantModel');
 const { createUser, updateUser } = require('../models/userModel');
 const { normalizeAttachment } = require('../utils/attachment');
+const { normalizeAccess, normalizeAccessKey } = require('../utils/access');
 const { hashPassword } = require('../utils/password');
 const {
   addDaysFromNow,
@@ -85,8 +86,16 @@ function buildUserBillingInfo(user) {
 }
 
 async function findUserByEmail(email) {
-  const users = await allQuery('SELECT id FROM users WHERE email = ?', [email]);
+  const users = await allQuery('SELECT id FROM users WHERE lower(email) = lower(?)', [normalizeAccess(email)]);
   return users[0];
+}
+
+async function safeLicenseSync(action) {
+  try {
+    return await action();
+  } catch (error) {
+    return { skipped: true, warning: error.message || 'Nao foi possivel sincronizar a licenca remota agora.' };
+  }
 }
 
 async function getUsers(req, res, next) {
@@ -265,15 +274,16 @@ async function deleteUser(req, res, next) {
 async function createPlatformAdmin(req, res, next) {
   try {
     const { email, password, name } = req.body;
-    if (!email || !password || !name) {
+    const access = normalizeAccess(email);
+    if (!access || !password || !name) {
       return res.status(400).json({ message: 'Preencha nome, email e senha.' });
     }
-    if (await findUserByEmail(email)) {
+    if (await findUserByEmail(access)) {
       return res.status(400).json({ message: 'Email ja cadastrado.' });
     }
 
     const passwordHash = hashPassword(password);
-    const user = await createUser(req.user.tenant_id, name, email, passwordHash, 'superadmin');
+    const user = await createUser(req.user.tenant_id, name, access, passwordHash, 'superadmin');
 
     res.status(201).json({ user });
   } catch (error) {
@@ -284,22 +294,23 @@ async function createPlatformAdmin(req, res, next) {
 async function registerTenant(req, res, next) {
   try {
     const { email, password, name, tenantName, adminNotes, billingType } = req.body;
-    if (!email || !password || !name || !tenantName) {
+    const access = normalizeAccess(email);
+    if (!access || !password || !name || !tenantName) {
       return res.status(400).json({ message: 'Preencha nome da barbearia, nome completo, email e senha.' });
     }
-    if (await findUserByEmail(email)) {
+    if (await findUserByEmail(access)) {
       return res.status(400).json({ message: 'Email ja cadastrado.' });
     }
 
     const selectedBillingType = ALLOWED_BILLING_TYPES.includes(billingType) ? billingType : 'subscription';
     const passwordHash = hashPassword(password);
     const tenant = await createTenant(tenantName);
-    const user = await createUser(tenant.id, name, email, passwordHash, 'user', adminNotes || '', selectedBillingType);
-    const licenseSync = await syncActiveLicense({
-      ...user,
-      tenant_name: tenant.name,
-      billing_type: selectedBillingType,
-    });
+    const user = await createUser(tenant.id, name, access, passwordHash, 'user', adminNotes || '', selectedBillingType);
+    const licenseSync = await safeLicenseSync(() => syncActiveLicense({
+        ...user,
+        tenant_name: tenant.name,
+        billing_type: selectedBillingType,
+      }));
 
     res.status(201).json({ user, tenant, licenseSync });
   } catch (error) {
@@ -311,7 +322,8 @@ async function editUser(req, res, next) {
   try {
     const { id } = req.params;
     const { name, email, role, billingType, adminNotes, password, billingDays } = req.body;
-    if (!name || !email || !role) {
+    const access = normalizeAccess(email);
+    if (!name || !access || !role) {
       return res.status(400).json({ message: 'Nome, acesso e role sao obrigatorios.' });
     }
     if (!ALLOWED_ROLES.includes(role)) {
@@ -340,32 +352,32 @@ async function editUser(req, res, next) {
       return res.status(404).json({ message: 'Usuario nao encontrado.' });
     }
 
-    const updated = await updateUser(id, name, email, role, billingType || 'subscription', adminNotes || '', passwordHash);
+    const updated = await updateUser(id, name, access, role, billingType || 'subscription', adminNotes || '', passwordHash);
     let licenseSync = { skipped: true, reason: 'Superadmin nao precisa de licenca remota.' };
     if (billingDays !== undefined && role !== 'superadmin') {
       const days = Math.max(0, Math.floor(Number(billingDays) || 0));
       const cycleStart = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
       await runQuery('UPDATE users SET billing_cycle_started_at = ?, billing_paid_at = NULL WHERE id = ?', [cycleStart, id]);
-      if (previousUsers[0].email !== email) {
-        await blockLicense(previousUsers[0]);
+      if (normalizeAccessKey(previousUsers[0].email) !== normalizeAccessKey(access)) {
+        await safeLicenseSync(() => blockLicense(previousUsers[0]));
       }
-      licenseSync = await syncActiveLicense({
+      licenseSync = await safeLicenseSync(() => syncActiveLicense({
         ...updated,
         tenant_name: previousUsers[0].tenant_name,
       }, {
         status: days >= 30 ? 'vencido' : 'ativo',
         expiresAt: addDaysFromNow(Math.max(0, 30 - days)),
-      });
+      }));
     } else if (role !== 'superadmin') {
-      if (previousUsers[0].email !== email) {
-        await blockLicense(previousUsers[0]);
+      if (normalizeAccessKey(previousUsers[0].email) !== normalizeAccessKey(access)) {
+        await safeLicenseSync(() => blockLicense(previousUsers[0]));
       }
-      licenseSync = await syncActiveLicense({
+      licenseSync = await safeLicenseSync(() => syncActiveLicense({
         ...updated,
         tenant_name: previousUsers[0].tenant_name,
-      });
+      }));
     } else if (previousUsers[0].role !== 'superadmin') {
-      licenseSync = await blockLicense(previousUsers[0]);
+      licenseSync = await safeLicenseSync(() => blockLicense(previousUsers[0]));
     }
     res.json({ user: updated, licenseSync });
   } catch (error) {

@@ -3,10 +3,14 @@ const state = {
   tenant: null,
   clients: [],
   services: [],
+  employees: [],
+  products: [],
+  productSales: [],
   appointments: [],
   serviceHistory: [],
+  manualEarnings: [],
   bugReports: [],
-  editing: { client: null, service: null, appointment: null },
+  editing: { client: null, service: null, employee: null, product: null, appointment: null },
 };
 
 if ('serviceWorker' in navigator) {
@@ -71,6 +75,7 @@ const appointmentsTable = document.getElementById('appointments-table');
 const historyTable = document.getElementById('history-table');
 const bugReportsTable = document.getElementById('bug-reports-table');
 const appointmentClient = document.getElementById('appointment-client');
+const appointmentEmployee = document.getElementById('appointment-employee');
 const appointmentServices = document.getElementById('appointment-services');
 const appointmentTotal = document.getElementById('appointment-total');
 const appointmentFilterDate = document.getElementById('appointment-filter-date');
@@ -94,9 +99,36 @@ const historyFilterMaxValue = document.getElementById('history-filter-max-value'
 const historyFilterService = document.getElementById('history-filter-service');
 const historyFilterPaymentType = document.getElementById('history-filter-payment-type');
 const clearHistoryFiltersButton = document.getElementById('clear-history-filters');
+const earningsPeriod = document.getElementById('earnings-period');
+const earningsReferenceDate = document.getElementById('earnings-reference-date');
+const earningsSourceFilter = document.getElementById('earnings-source-filter');
+const earningsTotal = document.getElementById('earnings-total');
+const earningsToday = document.getElementById('earnings-today');
+const earningsWeek = document.getElementById('earnings-week');
+const earningsMonth = document.getElementById('earnings-month');
+const earningsYear = document.getElementById('earnings-year');
+const earningsSourceTotal = document.getElementById('earnings-source-total');
+const earningsPaymentTotal = document.getElementById('earnings-payment-total');
+const earningsSourceChart = document.getElementById('earnings-source-chart');
+const earningsPaymentChart = document.getElementById('earnings-payment-chart');
+const earningsSourceLegend = document.getElementById('earnings-source-legend');
+const earningsPaymentLegend = document.getElementById('earnings-payment-legend');
+const earningsProductsTotal = document.getElementById('earnings-products-total');
+const earningsEmployeesTotal = document.getElementById('earnings-employees-total');
+const earningsProductsChart = document.getElementById('earnings-products-chart');
+const earningsEmployeesChart = document.getElementById('earnings-employees-chart');
+const earningsProductsLegend = document.getElementById('earnings-products-legend');
+const earningsEmployeesLegend = document.getElementById('earnings-employees-legend');
+const earningsTable = document.getElementById('earnings-table');
+const manualEarningForm = document.getElementById('manual-earning-form');
+const manualEarningAmount = document.getElementById('manual-earning-amount');
+const manualEarningDate = document.getElementById('manual-earning-date');
+const manualEarningDescription = document.getElementById('manual-earning-description');
+const manualEarningMessage = document.getElementById('manual-earning-message');
 
 const clientForm = document.getElementById('client-form');
 const serviceForm = document.getElementById('service-form');
+const employeeForm = document.getElementById('employee-form');
 const appointmentForm = document.getElementById('appointment-form');
 const bugForm = document.getElementById('bug-form');
 const bugMessage = document.getElementById('bug-message');
@@ -105,6 +137,8 @@ const newClientButton = document.getElementById('new-client');
 const cancelClientButton = document.getElementById('cancel-client');
 const newServiceButton = document.getElementById('new-service');
 const cancelServiceButton = document.getElementById('cancel-service');
+const newEmployeeButton = document.getElementById('new-employee');
+const cancelEmployeeButton = document.getElementById('cancel-employee');
 const newAppointmentButton = document.getElementById('new-appointment');
 const cancelAppointmentButton = document.getElementById('cancel-appointment');
 
@@ -123,6 +157,29 @@ const recommendationBarbershopName = document.getElementById('recommendation-bar
 const recommendationText = document.getElementById('recommendation-text');
 const recommendationAttachment = document.getElementById('recommendation-attachment');
 const bugAttachment = document.getElementById('bug-attachment');
+const employeesTable = document.getElementById('employees-table');
+const employeeNameInput = document.getElementById('employee-name');
+const employeePhoneInput = document.getElementById('employee-phone');
+const employeeGenderInput = document.getElementById('employee-gender');
+const employeeSpecialtyInput = document.getElementById('employee-specialty');
+const employeeMonthlyGoalInput = document.getElementById('employee-monthly-goal');
+const employeeNotesInput = document.getElementById('employee-notes');
+const productsTable = document.getElementById('products-table');
+const productForm = document.getElementById('product-form');
+const productSaleForm = document.getElementById('product-sale-form');
+const newProductButton = document.getElementById('new-product');
+const cancelProductButton = document.getElementById('cancel-product');
+const productNameInput = document.getElementById('product-name');
+const productQuantityInput = document.getElementById('product-quantity');
+const productUnitInput = document.getElementById('product-unit');
+const productSalePriceInput = document.getElementById('product-sale-price');
+const productCostPriceInput = document.getElementById('product-cost-price');
+const productNotesInput = document.getElementById('product-notes');
+const saleProductInput = document.getElementById('sale-product');
+const saleQuantityInput = document.getElementById('sale-quantity');
+const saleDateInput = document.getElementById('sale-date');
+const productSaleMessage = document.getElementById('product-sale-message');
+const appointmentAlarm = document.getElementById('appointment-alarm');
 
 const DEFAULT_PRIMARY_COLOR = '#d4d4d8';
 const LEGACY_DEFAULT_PRIMARY_COLOR = '#1a73e8';
@@ -207,12 +264,31 @@ function resetServiceForm() {
   document.getElementById('service-id').value = '';
 }
 
+function resetEmployeeForm() {
+  state.editing.employee = null;
+  if (employeeForm) employeeForm.reset();
+  if (employeeForm) employeeForm.classList.add('hidden');
+  const employeeId = document.getElementById('employee-id');
+  if (employeeId) employeeId.value = '';
+}
+
+function resetProductForm() {
+  state.editing.product = null;
+  if (productForm) productForm.reset();
+  if (productForm) productForm.classList.add('hidden');
+  const productId = document.getElementById('product-id');
+  if (productId) productId.value = '';
+  if (productUnitInput) productUnitInput.value = 'un.';
+}
+
 function resetAppointmentForm() {
   state.editing.appointment = null;
   appointmentForm.reset();
   appointmentForm.classList.add('hidden');
   document.getElementById('appointment-id').value = '';
   setDefaultAppointmentDateTime();
+  if (appointmentEmployee) appointmentEmployee.value = '';
+  if (appointmentAlarm) appointmentAlarm.checked = false;
   if (appointmentPaymentStatus) appointmentPaymentStatus.value = 'a pagar';
   syncPaymentProofVisibility();
   if (appointmentNoteAttachment) appointmentNoteAttachment.value = '';
@@ -231,6 +307,12 @@ function escapeHtml(value) {
     .replaceAll('>', '&gt;')
     .replaceAll('"', '&quot;')
     .replaceAll("'", '&#039;');
+}
+
+function renderIconAction(action, id, icon, label, extraClass = '') {
+  return `<button class="icon-button table-icon-action ${extraClass}" type="button" data-action="${action}" data-id="${id}" title="${escapeHtml(label)}" aria-label="${escapeHtml(label)}">
+    <i class="ph ${icon}"></i>
+  </button>`;
 }
 
 function getPaymentTypeLabel(paymentType) {
@@ -354,6 +436,70 @@ function formatDateTime(value) {
   return `${day}/${month}/${year}, ${timePart}`;
 }
 
+function toDateKey(value) {
+  if (!value) return '';
+  const raw = String(value);
+  const match = raw.match(/^(\d{4}-\d{2}-\d{2})/);
+  if (match) return match[1];
+  const date = new Date(raw);
+  if (Number.isNaN(date.getTime())) return '';
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function formatDateOnly(value) {
+  const dateKey = toDateKey(value);
+  if (!dateKey) return '-';
+  const [year, month, day] = dateKey.split('-');
+  return `${day}/${month}/${year}`;
+}
+
+function todayKey() {
+  return toDateKey(new Date());
+}
+
+function parseDateKey(dateKey) {
+  const [year, month, day] = String(dateKey || todayKey()).split('-').map(Number);
+  return new Date(year, (month || 1) - 1, day || 1);
+}
+
+function addDays(date, days) {
+  const next = new Date(date);
+  next.setDate(next.getDate() + days);
+  return next;
+}
+
+function dateToKey(date) {
+  return toDateKey(date);
+}
+
+function getPeriodRange(period, referenceDateKey = todayKey()) {
+  const reference = parseDateKey(referenceDateKey);
+  let start = new Date(reference);
+  let end = new Date(reference);
+
+  if (period === 'week') {
+    const day = reference.getDay();
+    const diff = day === 0 ? -6 : 1 - day;
+    start = addDays(reference, diff);
+    end = addDays(start, 6);
+  } else if (period === 'month') {
+    start = new Date(reference.getFullYear(), reference.getMonth(), 1);
+    end = new Date(reference.getFullYear(), reference.getMonth() + 1, 0);
+  } else if (period === 'year') {
+    start = new Date(reference.getFullYear(), 0, 1);
+    end = new Date(reference.getFullYear(), 11, 31);
+  }
+
+  return { start: dateToKey(start), end: dateToKey(end) };
+}
+
+function isDateInRange(dateKey, range) {
+  return dateKey >= range.start && dateKey <= range.end;
+}
+
 function getFilteredAppointments() {
   const selectedDate = appointmentFilterDate?.value || '';
   const selectedTime = appointmentFilterTime?.value || '';
@@ -447,8 +593,8 @@ function renderClients() {
       <td>${escapeHtml(client.notes || '-')}</td>
       <td class="actions">
         <div class="action-buttons">
-          <button class="button-secondary" data-action="edit-client" data-id="${client.id}">Editar</button>
-          <button class="button-secondary" data-action="delete-client" data-id="${client.id}">Remover</button>
+          ${renderIconAction('edit-client', client.id, 'ph-pencil-simple', 'Editar cliente')}
+          ${renderIconAction('delete-client', client.id, 'ph-trash', 'Remover cliente', 'danger-action')}
         </div>
       </td>
     </tr>`).join('');
@@ -462,11 +608,72 @@ function renderServices() {
       <td>${escapeHtml(service.description || '-')}</td>
       <td class="actions">
         <div class="action-buttons">
-          <button class="button-secondary" data-action="edit-service" data-id="${service.id}">Editar</button>
-          <button class="button-secondary" data-action="delete-service" data-id="${service.id}">Remover</button>
+          ${renderIconAction('edit-service', service.id, 'ph-pencil-simple', 'Editar serviço')}
+          ${renderIconAction('delete-service', service.id, 'ph-trash', 'Remover serviço', 'danger-action')}
         </div>
       </td>
     </tr>`).join('');
+}
+
+function getGenderLabel(gender) {
+  const labels = { feminino: 'Feminino', masculino: 'Masculino' };
+  return labels[gender] || '-';
+}
+
+function renderEmployees() {
+  if (!employeesTable) return;
+  if (!state.employees.length) {
+    employeesTable.innerHTML = '<tr><td colspan="7">Nenhum funcionário cadastrado.</td></tr>';
+    return;
+  }
+
+  employeesTable.innerHTML = state.employees.map((employee) => `
+    <tr>
+      <td>${escapeHtml(employee.name)}</td>
+      <td>${escapeHtml(employee.phone || '-')}</td>
+      <td>${getGenderLabel(employee.gender)}</td>
+      <td>${escapeHtml(employee.specialty || '-')}</td>
+      <td>${formatCurrency(employee.monthly_goal || 0)}</td>
+      <td>${escapeHtml(employee.notes || '-')}</td>
+      <td class="actions">
+        <div class="action-buttons">
+          ${renderIconAction('edit-employee', employee.id, 'ph-pencil-simple', 'Editar funcionário')}
+          ${renderIconAction('delete-employee', employee.id, 'ph-trash', 'Remover funcionário', 'danger-action')}
+        </div>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function renderProducts() {
+  if (!productsTable) return;
+  if (!state.products.length) {
+    productsTable.innerHTML = '<tr><td colspan="6">Nenhum produto cadastrado.</td></tr>';
+    return;
+  }
+
+  productsTable.innerHTML = state.products.map((product) => {
+    const salePrice = Number(product.sale_price || 0);
+    const costPrice = Number(product.cost_price || 0);
+    return `
+      <tr>
+        <td>
+          ${escapeHtml(product.name)}
+          <div class="payment-proof-inline">${escapeHtml(product.notes || '')}</div>
+        </td>
+        <td>${Number(product.quantity || 0)} ${escapeHtml(product.unit_label || 'un.')}</td>
+        <td>${formatCurrency(salePrice)}</td>
+        <td>${formatCurrency(costPrice)}</td>
+        <td>${formatCurrency(salePrice - costPrice)}</td>
+        <td class="actions">
+          <div class="action-buttons">
+            ${renderIconAction('edit-product', product.id, 'ph-pencil-simple', 'Editar produto')}
+            ${renderIconAction('delete-product', product.id, 'ph-trash', 'Remover produto', 'danger-action')}
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join('');
 }
 
 function renderAppointments() {
@@ -480,6 +687,7 @@ function renderAppointments() {
   appointmentsTable.innerHTML = appointments.map((appointment) => {
     const client = state.clients.find(c => c.id === appointment.client_id);
     const clientName = client ? client.name : 'Cliente não encontrado';
+    const employeeName = appointment.employee_name || state.employees.find((employee) => Number(employee.id) === Number(appointment.employee_id))?.name || '-';
     const servicesText = appointment.services ? appointment.services.map(s => s.service_name || s.name).join(', ') : '-';
     const totalPrice = getAppointmentTotal(appointment);
     const paymentStatus = appointment.payment_status || 'a pagar';
@@ -490,6 +698,7 @@ function renderAppointments() {
       <td>${formatDateTime(appointment.appointment_date)}</td>
       <td>
         ${escapeHtml(servicesText)}
+        <div class="payment-proof-inline">Funcionário: ${escapeHtml(employeeName)}</div>
         <div class="payment-proof-inline">${renderNoteAttachmentLink(appointment)}</div>
       </td>
       <td>${formatCurrency(totalPrice)}</td>
@@ -500,9 +709,9 @@ function renderAppointments() {
       </td>
       <td class="actions">
         <div class="action-buttons">
-          <button class="button-secondary" data-action="edit-appointment" data-id="${appointment.id}">Editar</button>
-          <button class="button-secondary" data-action="finish-appointment" data-id="${appointment.id}">Trabalho finalizado</button>
-          <button class="button-secondary" data-action="delete-appointment" data-id="${appointment.id}">Remover</button>
+          ${renderIconAction('edit-appointment', appointment.id, 'ph-pencil-simple', 'Editar agendamento')}
+          ${renderIconAction('finish-appointment', appointment.id, 'ph-check-circle', 'Finalizar trabalho')}
+          ${renderIconAction('delete-appointment', appointment.id, 'ph-trash', 'Remover agendamento', 'danger-action')}
         </div>
       </td>
     </tr>`;
@@ -522,6 +731,7 @@ function renderServiceHistory() {
     const services = getHistoryServices(item);
     const servicesText = services.length ? services.map((service) => service.service_name || service.name).join(', ') : '-';
     const totalPrice = getAppointmentTotal(item);
+    const employeeName = item.employee_name || '-';
 
     return `
     <tr>
@@ -529,6 +739,7 @@ function renderServiceHistory() {
       <td>${formatDateTime(item.appointment_date)}</td>
       <td>
         ${escapeHtml(servicesText)}
+        <div class="payment-proof-inline">Funcionário: ${escapeHtml(employeeName)}</div>
         <div class="payment-proof-inline">${renderNoteAttachmentLink(item)}</div>
       </td>
       <td>${formatCurrency(totalPrice)}</td>
@@ -537,6 +748,183 @@ function renderServiceHistory() {
       <td>${formatDateTime(item.completed_at)}</td>
     </tr>`;
   }).join('');
+}
+
+function getEarningEntries() {
+  const serviceEntries = state.serviceHistory.map((item) => {
+    const services = getHistoryServices(item);
+    const serviceNames = services.map((service) => service.service_name || service.name).filter(Boolean).join(', ');
+    return {
+      id: `appointment-${item.id}`,
+      rawId: item.id,
+      source: 'appointment',
+      sourceLabel: 'Agendamento',
+      date: toDateKey(item.appointment_date || item.completed_at),
+      amount: getAppointmentTotal(item),
+      description: item.client_name ? `${item.client_name}${serviceNames ? ` - ${serviceNames}` : ''}${item.employee_name ? ` (${item.employee_name})` : ''}` : (serviceNames || 'Serviço finalizado'),
+      paymentType: item.payment_type || 'dinheiro',
+      removable: true,
+      deleteAction: 'delete-history-earning',
+    };
+  });
+
+  const manualEntries = state.manualEarnings.map((item) => ({
+    id: `manual-${item.id}`,
+    rawId: item.id,
+    source: 'manual',
+    sourceLabel: 'Manual',
+    date: toDateKey(item.entry_date || item.created_at),
+    amount: Number(item.amount || 0),
+    description: item.description || 'Ganho manual',
+    paymentType: 'manual',
+    removable: true,
+    deleteAction: 'delete-manual-earning',
+  }));
+
+  const productEntries = state.productSales.map((item) => ({
+    id: `product-${item.id}`,
+    rawId: item.id,
+    source: 'product',
+    sourceLabel: 'Item vendido',
+    date: toDateKey(item.sold_at || item.created_at),
+    amount: Number(item.profit_total ?? (Number(item.gross_total || 0) - Number(item.cost_total || 0))),
+    grossAmount: Number(item.gross_total || 0),
+    costAmount: Number(item.cost_total || 0),
+    productName: item.product_name || 'Produto',
+    description: `${item.product_name || 'Produto'} - ${Number(item.quantity || 0)} ${item.unit_label || 'un.'} (venda ${formatCurrency(item.gross_total || 0)} / custo ${formatCurrency(item.cost_total || 0)})`,
+    paymentType: 'product',
+    removable: true,
+    deleteAction: 'delete-product-sale',
+  }));
+
+  return [...serviceEntries, ...manualEntries, ...productEntries]
+    .filter((entry) => entry.date && Number.isFinite(entry.amount))
+    .sort((a, b) => b.date.localeCompare(a.date));
+}
+
+function sumEarnings(entries) {
+  return entries.reduce((sum, entry) => sum + Number(entry.amount || 0), 0);
+}
+
+function getFilteredEarnings() {
+  const period = earningsPeriod?.value || 'month';
+  const reference = earningsReferenceDate?.value || todayKey();
+  const source = earningsSourceFilter?.value || '';
+  const range = getPeriodRange(period, reference);
+
+  return getEarningEntries().filter((entry) => {
+    return isDateInRange(entry.date, range) && (!source || entry.source === source);
+  });
+}
+
+function groupEarnings(entries, keyGetter) {
+  return entries.reduce((groups, entry) => {
+    const key = keyGetter(entry);
+    groups[key] = (groups[key] || 0) + Number(entry.amount || 0);
+    return groups;
+  }, {});
+}
+
+function renderPieChart(chartEl, legendEl, groups, labels, colors) {
+  if (!chartEl || !legendEl) return;
+  const total = Object.values(groups).reduce((sum, value) => sum + value, 0);
+  if (total <= 0) {
+    chartEl.style.background = 'var(--surface-color)';
+    chartEl.innerHTML = '<span>Sem dados</span>';
+    legendEl.innerHTML = '';
+    return;
+  }
+
+  let offset = 0;
+  const segments = Object.entries(groups).map(([key, value], index) => {
+    const start = offset;
+    const size = (value / total) * 100;
+    offset += size;
+    return `${colors[index % colors.length]} ${start}% ${offset}%`;
+  });
+
+  chartEl.style.background = `conic-gradient(${segments.join(', ')})`;
+  chartEl.innerHTML = `<strong>${formatCurrency(total)}</strong>`;
+  legendEl.innerHTML = Object.entries(groups).map(([key, value], index) => `
+    <div class="legend-item">
+      <span class="legend-color" style="background:${colors[index % colors.length]}"></span>
+      <span>${escapeHtml(labels[key] || key)}</span>
+      <strong>${formatCurrency(value)}</strong>
+    </div>
+  `).join('');
+}
+
+function buildEmployeeGoalLabels(employeeGroups) {
+  return Object.fromEntries(Object.entries(employeeGroups).map(([name, value]) => {
+    const employee = state.employees.find((item) => item.name === name);
+    const goal = Number(employee?.monthly_goal || 0);
+    if (!goal) return [name, name];
+    const percent = Math.min(999, Math.round((Number(value || 0) / goal) * 100));
+    return [name, `${name} (${percent}% da meta)`];
+  }));
+}
+
+function renderEarnings() {
+  if (!earningsTable) return;
+  const reference = earningsReferenceDate?.value || todayKey();
+  const allEntries = getEarningEntries();
+  const filteredEntries = getFilteredEarnings();
+  const todayRange = getPeriodRange('day', todayKey());
+  const weekRange = getPeriodRange('week', reference);
+  const monthRange = getPeriodRange('month', reference);
+  const yearRange = getPeriodRange('year', reference);
+
+  if (earningsTotal) earningsTotal.textContent = formatCurrency(sumEarnings(filteredEntries));
+  if (earningsToday) earningsToday.textContent = formatCurrency(sumEarnings(allEntries.filter((entry) => isDateInRange(entry.date, todayRange))));
+  if (earningsWeek) earningsWeek.textContent = formatCurrency(sumEarnings(allEntries.filter((entry) => isDateInRange(entry.date, weekRange))));
+  if (earningsMonth) earningsMonth.textContent = formatCurrency(sumEarnings(allEntries.filter((entry) => isDateInRange(entry.date, monthRange))));
+  if (earningsYear) earningsYear.textContent = formatCurrency(sumEarnings(allEntries.filter((entry) => isDateInRange(entry.date, yearRange))));
+
+  const sourceGroups = groupEarnings(filteredEntries, (entry) => entry.source);
+  const paymentGroups = groupEarnings(filteredEntries, (entry) => entry.paymentType);
+  const productGroups = groupEarnings(filteredEntries.filter((entry) => entry.source === 'product'), (entry) => entry.productName || 'Produto');
+  const employeeEntries = filteredEntries.filter((entry) => entry.source === 'appointment');
+  const employeeGroups = groupEarnings(employeeEntries, (entry) => {
+    const match = String(entry.description || '').match(/\(([^)]+)\)$/);
+    return match?.[1] || 'Sem funcionário';
+  });
+  if (earningsSourceTotal) earningsSourceTotal.textContent = `${filteredEntries.length} lançamento${filteredEntries.length === 1 ? '' : 's'}`;
+  if (earningsPaymentTotal) earningsPaymentTotal.textContent = `${filteredEntries.length} lançamento${filteredEntries.length === 1 ? '' : 's'}`;
+  if (earningsProductsTotal) earningsProductsTotal.textContent = `${Object.keys(productGroups).length} produto${Object.keys(productGroups).length === 1 ? '' : 's'}`;
+  if (earningsEmployeesTotal) earningsEmployeesTotal.textContent = `${Object.keys(employeeGroups).length} profissional${Object.keys(employeeGroups).length === 1 ? '' : 'is'}`;
+  renderPieChart(earningsSourceChart, earningsSourceLegend, sourceGroups, {
+    appointment: 'Agendamentos',
+    manual: 'Ganhos manuais',
+    product: 'Itens vendidos',
+  }, ['#d4d4d8', '#38bdf8', '#22c55e']);
+  renderPieChart(earningsPaymentChart, earningsPaymentLegend, paymentGroups, {
+    dinheiro: 'Dinheiro',
+    pix: 'PIX',
+    debito: 'Débito',
+    credito: 'Crédito',
+    manual: 'Manual',
+    product: 'Produto',
+  }, ['#22c55e', '#38bdf8', '#f59e0b', '#a78bfa', '#d4d4d8']);
+  renderPieChart(earningsProductsChart, earningsProductsLegend, productGroups, {}, ['#22c55e', '#84cc16', '#14b8a6', '#f59e0b', '#ef4444']);
+  renderPieChart(earningsEmployeesChart, earningsEmployeesLegend, employeeGroups, buildEmployeeGoalLabels(employeeGroups), ['#38bdf8', '#a78bfa', '#f97316', '#22c55e', '#d4d4d8']);
+
+  if (!filteredEntries.length) {
+    earningsTable.innerHTML = '<tr><td colspan="6">Nenhum ganho encontrado neste período.</td></tr>';
+    return;
+  }
+
+  earningsTable.innerHTML = filteredEntries.map((entry) => `
+    <tr>
+      <td>${formatDateOnly(entry.date)}</td>
+      <td>${escapeHtml(entry.sourceLabel)}</td>
+      <td>${escapeHtml(entry.description)}</td>
+      <td>${entry.paymentType === 'manual' ? '-' : getPaymentTypeLabel(entry.paymentType)}</td>
+      <td>${formatCurrency(entry.amount)}</td>
+      <td class="actions">
+        ${entry.removable ? renderIconAction(entry.deleteAction, entry.rawId, 'ph-trash', 'Remover lançamento', 'danger-action') : '-'}
+      </td>
+    </tr>
+  `).join('');
 }
 
 function renderBugReports() {
@@ -606,29 +994,62 @@ function fillClientSelect() {
   appointmentClient.innerHTML = state.clients.map((client) => `<option value="${client.id}">${escapeHtml(client.name)}</option>`).join('');
 }
 
+function fillEmployeeSelect() {
+  if (!appointmentEmployee) return;
+  const selectedValue = appointmentEmployee.value;
+  appointmentEmployee.innerHTML = '<option value="">Sem funcionário definido</option>' + state.employees.map((employee) => (
+    `<option value="${employee.id}">${escapeHtml(employee.name)}${employee.specialty ? ` - ${escapeHtml(employee.specialty)}` : ''}</option>`
+  )).join('');
+  appointmentEmployee.value = selectedValue;
+}
+
+function fillProductSelect() {
+  if (!saleProductInput) return;
+  if (!state.products.length) {
+    saleProductInput.innerHTML = '<option value="">Cadastre um produto primeiro</option>';
+    return;
+  }
+  saleProductInput.innerHTML = state.products.map((product) => (
+    `<option value="${product.id}">${escapeHtml(product.name)} - ${Number(product.quantity || 0)} ${escapeHtml(product.unit_label || 'un.')} em estoque</option>`
+  )).join('');
+}
+
 // --- Data Loading ---
 async function loadAppData() {
   try {
-    const [clientsRes, servicesRes, appointmentsRes, historyRes, bugReportsRes] = await Promise.all([
+    const [clientsRes, servicesRes, employeesRes, productsRes, productSalesRes, appointmentsRes, historyRes, earningsRes, bugReportsRes] = await Promise.all([
       apiFetch('/api/clients'),
       apiFetch('/api/services'),
+      apiFetch('/api/employees'),
+      apiFetch('/api/inventory/products'),
+      apiFetch('/api/inventory/sales'),
       apiFetch('/api/appointments'),
       apiFetch('/api/appointments/history'),
+      apiFetch('/api/earnings'),
       apiFetch('/api/bug-reports')
     ]);
     
     state.clients = clientsRes.clients || [];
     state.services = servicesRes.services || [];
+    state.employees = employeesRes.employees || [];
+    state.products = productsRes.products || [];
+    state.productSales = productSalesRes.sales || [];
     state.appointments = appointmentsRes.appointments || [];
     state.serviceHistory = historyRes.history || [];
+    state.manualEarnings = earningsRes.earnings || [];
     state.bugReports = bugReportsRes.reports || [];
 
     renderClients();
     renderServices();
+    renderEmployees();
+    renderProducts();
     renderAppointments();
     renderServiceHistory();
+    renderEarnings();
     renderBugReports();
     fillClientSelect();
+    fillEmployeeSelect();
+    fillProductSelect();
     fillAppointmentServices();
     fillAppointmentServiceFilter();
     fillHistoryClientFilter();
@@ -723,6 +1144,109 @@ async function handleServiceSubmit(event) {
   }
 }
 
+async function handleEmployeeSubmit(event) {
+  event.preventDefault();
+  const id = document.getElementById('employee-id').value;
+  const payload = {
+    name: employeeNameInput?.value?.trim(),
+    phone: employeePhoneInput?.value?.trim() || '',
+    gender: employeeGenderInput?.value || '',
+    specialty: employeeSpecialtyInput?.value?.trim() || '',
+    monthly_goal: Number(employeeMonthlyGoalInput?.value || 0),
+    notes: employeeNotesInput?.value?.trim() || '',
+  };
+  if (!payload.name) return;
+
+  try {
+    if (id) {
+      await apiFetch(`/api/employees/${id}`, 'PUT', payload);
+    } else {
+      await apiFetch('/api/employees', 'POST', payload);
+    }
+    await loadAppData();
+    resetEmployeeForm();
+  } catch (error) {
+    alert(error.message);
+  }
+}
+
+async function handleProductSubmit(event) {
+  event.preventDefault();
+  const id = document.getElementById('product-id')?.value || '';
+  const payload = {
+    name: productNameInput?.value?.trim(),
+    quantity: Number(productQuantityInput?.value || 0),
+    unit_label: productUnitInput?.value?.trim() || 'un.',
+    sale_price: Number(productSalePriceInput?.value || 0),
+    cost_price: Number(productCostPriceInput?.value || 0),
+    notes: productNotesInput?.value?.trim() || '',
+  };
+  if (!payload.name) return;
+
+  try {
+    if (id) {
+      await apiFetch(`/api/inventory/products/${id}`, 'PUT', payload);
+    } else {
+      await apiFetch('/api/inventory/products', 'POST', payload);
+    }
+    await loadAppData();
+    resetProductForm();
+  } catch (error) {
+    alert(error.message);
+  }
+}
+
+async function handleProductSaleSubmit(event) {
+  event.preventDefault();
+  if (productSaleMessage) productSaleMessage.textContent = 'Registrando venda...';
+  const productId = Number(saleProductInput?.value || 0);
+  const quantity = Number(saleQuantityInput?.value || 0);
+  if (!productId || !Number.isFinite(quantity) || quantity <= 0) {
+    if (productSaleMessage) productSaleMessage.textContent = 'Selecione o produto e informe uma quantidade válida.';
+    return;
+  }
+
+  try {
+    await apiFetch(`/api/inventory/products/${productId}/sell`, 'POST', {
+      quantity,
+      sold_at: saleDateInput?.value || todayKey(),
+    });
+    if (productSaleForm) productSaleForm.reset();
+    if (saleDateInput) saleDateInput.value = todayKey();
+    if (productSaleMessage) productSaleMessage.textContent = 'Venda registrada e estoque atualizado.';
+    await loadAppData();
+  } catch (error) {
+    if (productSaleMessage) productSaleMessage.textContent = error.message;
+  }
+}
+
+function scheduleAppointmentAlarm(appointment, clientName) {
+  if (!appointment?.alarm_enabled) return;
+  const when = new Date(normalizeAppointmentDate(appointment.appointment_date)).getTime();
+  if (!Number.isFinite(when) || when <= Date.now()) return;
+  const title = 'Agendamento';
+  const message = `${clientName || 'Cliente'} às ${formatDateTime(appointment.appointment_date)}`;
+
+  if (window.SistemaBarberAndroid?.scheduleAlarm) {
+    const result = window.SistemaBarberAndroid.scheduleAlarm(String(appointment.id), title, message, String(when));
+    if (result === false) alert('Para usar alarmes no celular, permita notificações do Sistema Barber.');
+    return;
+  }
+
+  if (!('Notification' in window)) {
+    alert('Alarmes locais não são compatíveis neste navegador.');
+    return;
+  }
+
+  Notification.requestPermission().then((permission) => {
+    if (permission !== 'granted') {
+      alert('Permissão de notificação negada. O alarme não foi ativado.');
+      return;
+    }
+    window.setTimeout(() => new Notification(title, { body: message }), Math.max(0, when - Date.now()));
+  });
+}
+
 function readCheckedServiceIds() {
   return Array.from(appointmentServices.querySelectorAll('input[type="checkbox"]:checked')).map((checkbox) => Number(checkbox.value));
 }
@@ -731,11 +1255,13 @@ async function handleAppointmentSubmit(event) {
   event.preventDefault();
   const id = document.getElementById('appointment-id').value;
   const client_id = Number(appointmentClient.value);
+  const employee_id = appointmentEmployee?.value ? Number(appointmentEmployee.value) : null;
   const appointment_date = document.getElementById('appointment-date').value;
   const notes = document.getElementById('appointment-notes').value.trim();
   const service_ids = readCheckedServiceIds();
   const payment_type = document.getElementById('appointment-payment-type').value;
   const payment_status = appointmentPaymentStatus?.value || 'a pagar';
+  const alarm_enabled = Boolean(appointmentAlarm?.checked);
   
   if (!client_id || !appointment_date || !service_ids.length) {
     alert('Por favor, preencha o cliente, a data e selecione pelo menos um serviço.');
@@ -760,6 +1286,7 @@ async function handleAppointmentSubmit(event) {
     const existingNoteAttachment = getNoteAttachment(currentAppointment);
     const payload = {
       client_id,
+      employee_id,
       appointment_date,
       service_ids,
       payment_type,
@@ -768,14 +1295,18 @@ async function handleAppointmentSubmit(event) {
       payment_proof_data: uploadedProof?.attachment_data || existingProof.data || '',
       note_attachment_name: uploadedNoteAttachment?.attachment_name || existingNoteAttachment.name || '',
       note_attachment_data: uploadedNoteAttachment?.attachment_data || existingNoteAttachment.data || '',
+      alarm_enabled,
       notes,
     };
 
+    let data;
     if (id) {
-      await apiFetch(`/api/appointments/${id}`, 'PUT', payload);
+      data = await apiFetch(`/api/appointments/${id}`, 'PUT', payload);
     } else {
-      await apiFetch('/api/appointments', 'POST', payload);
+      data = await apiFetch('/api/appointments', 'POST', payload);
     }
+    const clientName = state.clients.find((client) => Number(client.id) === Number(client_id))?.name || '';
+    scheduleAppointmentAlarm({ ...(data?.appointment || {}), client_id, appointment_date, alarm_enabled }, clientName);
     await loadAppData();
     resetAppointmentForm();
   } catch (error) {
@@ -817,6 +1348,35 @@ async function handleBugSubmit(event) {
   }
 }
 
+async function handleManualEarningSubmit(event) {
+  event.preventDefault();
+  if (manualEarningMessage) manualEarningMessage.textContent = 'Adicionando ganho...';
+
+  const amount = Number(manualEarningAmount?.value || 0);
+  const entryDate = manualEarningDate?.value || todayKey();
+  const description = manualEarningDescription?.value?.trim() || '';
+
+  if (!Number.isFinite(amount) || amount <= 0) {
+    if (manualEarningMessage) manualEarningMessage.textContent = 'Informe um valor maior que zero.';
+    return;
+  }
+
+  try {
+    const data = await apiFetch('/api/earnings', 'POST', {
+      amount,
+      entry_date: entryDate,
+      description,
+    });
+    state.manualEarnings.unshift(data.earning);
+    manualEarningForm.reset();
+    if (manualEarningDate) manualEarningDate.value = todayKey();
+    if (manualEarningMessage) manualEarningMessage.textContent = 'Ganho adicionado com sucesso.';
+    renderEarnings();
+  } catch (error) {
+    if (manualEarningMessage) manualEarningMessage.textContent = error.message;
+  }
+}
+
 // --- Open Forms ---
 function openClientForm(client = null) {
   if (client) {
@@ -846,10 +1406,49 @@ function openServiceForm(service = null) {
   serviceForm.classList.remove('hidden');
 }
 
+function openEmployeeForm(employee = null) {
+  if (!employeeForm) return;
+  if (employee) {
+    document.getElementById('employee-id').value = employee.id;
+    if (employeeNameInput) employeeNameInput.value = employee.name || '';
+    if (employeePhoneInput) employeePhoneInput.value = employee.phone || '';
+    if (employeeGenderInput) employeeGenderInput.value = employee.gender || '';
+    if (employeeSpecialtyInput) employeeSpecialtyInput.value = employee.specialty || '';
+    if (employeeMonthlyGoalInput) employeeMonthlyGoalInput.value = employee.monthly_goal || '';
+    if (employeeNotesInput) employeeNotesInput.value = employee.notes || '';
+    state.editing.employee = employee.id;
+  } else {
+    employeeForm.reset();
+    state.editing.employee = null;
+  }
+  employeeForm.classList.remove('hidden');
+}
+
+function openProductForm(product = null) {
+  if (!productForm) return;
+  if (product) {
+    document.getElementById('product-id').value = product.id;
+    if (productNameInput) productNameInput.value = product.name || '';
+    if (productQuantityInput) productQuantityInput.value = product.quantity || 0;
+    if (productUnitInput) productUnitInput.value = product.unit_label || 'un.';
+    if (productSalePriceInput) productSalePriceInput.value = product.sale_price || 0;
+    if (productCostPriceInput) productCostPriceInput.value = product.cost_price || 0;
+    if (productNotesInput) productNotesInput.value = product.notes || '';
+    state.editing.product = product.id;
+  } else {
+    productForm.reset();
+    if (productUnitInput) productUnitInput.value = 'un.';
+    state.editing.product = null;
+  }
+  productForm.classList.remove('hidden');
+}
+
 function openAppointmentForm(appointment = null) {
   if (appointment) {
     document.getElementById('appointment-id').value = appointment.id;
     appointmentClient.value = appointment.client_id;
+    if (appointmentEmployee) appointmentEmployee.value = appointment.employee_id || '';
+    if (appointmentAlarm) appointmentAlarm.checked = Boolean(Number(appointment.alarm_enabled || 0));
     
     document.getElementById('appointment-date').value = normalizeAppointmentDate(appointment.appointment_date);
     
@@ -871,6 +1470,8 @@ function openAppointmentForm(appointment = null) {
   } else {
     appointmentForm.reset();
     setDefaultAppointmentDateTime();
+    if (appointmentEmployee) appointmentEmployee.value = '';
+    if (appointmentAlarm) appointmentAlarm.checked = false;
     if (appointmentPaymentStatus) appointmentPaymentStatus.value = 'a pagar';
     state.editing.appointment = null;
   }
@@ -884,8 +1485,10 @@ function openAppointmentForm(appointment = null) {
 
 // --- Table Actions ---
 async function handleTableClick(event) {
-  const action = event.target.dataset.action;
-  const id = event.target.dataset.id;
+  const actionButton = event.target.closest('[data-action]');
+  if (!actionButton) return;
+  const action = actionButton.dataset.action;
+  const id = actionButton.dataset.id;
   if (!action || !id) return;
 
   try {
@@ -907,6 +1510,28 @@ async function handleTableClick(event) {
     if (action === 'delete-service') {
       if (confirm('Tem certeza que deseja remover este serviço?')) {
         await apiFetch(`/api/services/${id}`, 'DELETE');
+        await loadAppData();
+      }
+    }
+
+    if (action === 'edit-employee') {
+      const employee = state.employees.find((item) => Number(item.id) === Number(id));
+      if (employee) openEmployeeForm(employee);
+    }
+    if (action === 'delete-employee') {
+      if (confirm('Remover este funcionário? Agendamentos antigos manterão o histórico do nome.')) {
+        await apiFetch(`/api/employees/${id}`, 'DELETE');
+        await loadAppData();
+      }
+    }
+
+    if (action === 'edit-product') {
+      const product = state.products.find((item) => Number(item.id) === Number(id));
+      if (product) openProductForm(product);
+    }
+    if (action === 'delete-product') {
+      if (confirm('Tem certeza que deseja remover este produto?')) {
+        await apiFetch(`/api/inventory/products/${id}`, 'DELETE');
         await loadAppData();
       }
     }
@@ -939,6 +1564,33 @@ async function handleTableClick(event) {
   }
 }
 
+async function handleEarningsTableClick(event) {
+  const button = event.target.closest('[data-action="delete-manual-earning"], [data-action="delete-history-earning"], [data-action="delete-product-sale"]');
+  if (!button) return;
+  const id = button.dataset.id;
+  const isHistory = button.dataset.action === 'delete-history-earning';
+  const isProductSale = button.dataset.action === 'delete-product-sale';
+  if (!confirm(isHistory ? 'Remover este ganho do histórico? Isso excluirá o registro finalizado dessa conta.' : (isProductSale ? 'Remover esta venda e devolver o item ao estoque?' : 'Remover este ganho manual?'))) return;
+
+  try {
+    if (isHistory) {
+      await apiFetch(`/api/appointments/history/${id}`, 'DELETE');
+      state.serviceHistory = state.serviceHistory.filter((item) => Number(item.id) !== Number(id));
+    } else if (isProductSale) {
+      await apiFetch(`/api/inventory/sales/${id}`, 'DELETE');
+      state.productSales = state.productSales.filter((item) => Number(item.id) !== Number(id));
+      await loadAppData();
+    } else {
+      await apiFetch(`/api/earnings/${id}`, 'DELETE');
+      state.manualEarnings = state.manualEarnings.filter((item) => Number(item.id) !== Number(id));
+    }
+    renderEarnings();
+    renderServiceHistory();
+  } catch (error) {
+    alert(error.message);
+  }
+}
+
 function bindEvents() {
   loginForm.addEventListener('submit', handleLogin);
   logoutButton.addEventListener('click', handleLogout);
@@ -950,14 +1602,22 @@ function bindEvents() {
   
   clientForm.addEventListener('submit', handleClientSubmit);
   serviceForm.addEventListener('submit', handleServiceSubmit);
+  if (employeeForm) employeeForm.addEventListener('submit', handleEmployeeSubmit);
+  if (productForm) productForm.addEventListener('submit', handleProductSubmit);
+  if (productSaleForm) productSaleForm.addEventListener('submit', handleProductSaleSubmit);
   appointmentForm.addEventListener('submit', handleAppointmentSubmit);
   if (bugForm) bugForm.addEventListener('submit', handleBugSubmit);
+  if (manualEarningForm) manualEarningForm.addEventListener('submit', handleManualEarningSubmit);
   
   newClientButton.addEventListener('click', () => openClientForm());
   cancelClientButton.addEventListener('click', resetClientForm);
   
   newServiceButton.addEventListener('click', () => openServiceForm());
   cancelServiceButton.addEventListener('click', resetServiceForm);
+  if (newEmployeeButton) newEmployeeButton.addEventListener('click', () => openEmployeeForm());
+  if (cancelEmployeeButton) cancelEmployeeButton.addEventListener('click', resetEmployeeForm);
+  if (newProductButton) newProductButton.addEventListener('click', () => openProductForm());
+  if (cancelProductButton) cancelProductButton.addEventListener('click', resetProductForm);
   
   newAppointmentButton.addEventListener('click', () => openAppointmentForm());
   cancelAppointmentButton.addEventListener('click', resetAppointmentForm);
@@ -972,7 +1632,10 @@ function bindEvents() {
   
   clientsTable.addEventListener('click', handleTableClick);
   servicesTable.addEventListener('click', handleTableClick);
+  if (employeesTable) employeesTable.addEventListener('click', handleTableClick);
+  if (productsTable) productsTable.addEventListener('click', handleTableClick);
   appointmentsTable.addEventListener('click', handleTableClick);
+  if (earningsTable) earningsTable.addEventListener('click', handleEarningsTableClick);
   
   appointmentServices.addEventListener('change', updateTotals);
   [appointmentFilterDate, appointmentFilterTime, appointmentFilterMinValue, appointmentFilterMaxValue, appointmentFilterService, appointmentFilterPaymentStatus]
@@ -1004,6 +1667,13 @@ function bindEvents() {
       renderServiceHistory();
     });
   }
+  [earningsPeriod, earningsReferenceDate, earningsSourceFilter]
+    .filter(Boolean)
+    .forEach((filter) => filter.addEventListener('input', renderEarnings));
+  document.addEventListener('click', (event) => {
+    const button = event.target.closest('.nav-button[data-section]');
+    if (button) setSection(button.dataset.section);
+  });
   navButtons.forEach((button) => button.addEventListener('click', () => setSection(button.dataset.section)));
   
   // Botão Admin na página de login
@@ -1167,6 +1837,9 @@ function bindRecommendationEvents() {
 }
 
 window.addEventListener('DOMContentLoaded', async () => {
+  if (earningsReferenceDate && !earningsReferenceDate.value) earningsReferenceDate.value = todayKey();
+  if (manualEarningDate && !manualEarningDate.value) manualEarningDate.value = todayKey();
+  if (saleDateInput && !saleDateInput.value) saleDateInput.value = todayKey();
   bindEvents();
   bindSettingsEvents();
   bindRecommendationEvents();

@@ -6,6 +6,8 @@
   <title>Painel de Admin - Sistema de Barbearia</title>
   <meta name="theme-color" content="#0a1128">
   <link rel="manifest" href="/manifest.json">
+  <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png">
+  <link rel="apple-touch-icon" href="/icons/icon-192.png">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   
@@ -396,11 +398,16 @@
   </section>
 
   <!-- Theme Toggle -->
+  <button id="fullscreen-toggle" class="floating-action fullscreen-toggle" title="Tela cheia" aria-label="Entrar em tela cheia">
+    <i class="ph ph-corners-out"></i>
+  </button>
+
   <button id="theme-toggle" class="theme-toggle" title="Alternar Modo Escuro/Claro">
     <i class="ph ph-sun"></i>
   </button>
 
   <script src="local-api.js"></script>
+  <script src="fullscreen.js"></script>
   <script>
     // Theme logic
     const themeToggle = document.getElementById('theme-toggle');
@@ -1228,11 +1235,11 @@
         });
         const data = await response.json();
         if (response.ok) {
-          registerMessage.textContent = 'Barbearia criada com sucesso!';
+          registerMessage.textContent = `Barbearia criada com sucesso! Acesso para login: ${data.user?.email || email.toLowerCase()}`;
           registerForm.reset();
           await loadUsers();
         } else {
-          registerMessage.textContent = data.message;
+          registerMessage.textContent = data.message || 'Erro ao criar barbearia.';
         }
       } catch (error) {
         registerMessage.textContent = 'Erro ao criar barbearia.';

@@ -3,6 +3,7 @@ const db = require('../config/db');
 const { createTenant, getTenantById, updateTenant } = require('../models/tenantModel');
 const { getUserByEmail, getUserByEmailOrName, createUser, getUserById } = require('../models/userModel');
 const { hashPassword, verifyPassword } = require('../utils/password');
+const { normalizeAccess } = require('../utils/access');
 const { verifyLicense } = require('../services/licenseValidationService');
 
 const TOKEN_NAME = 'token';
@@ -61,18 +62,19 @@ async function register(req, res, next) {
     }
 
     const { email, password, name, tenantName } = req.body;
-    if (!email || !password || !name || !tenantName) {
+    const access = normalizeAccess(email);
+    if (!access || !password || !name || !tenantName) {
       return res.status(400).json({ message: 'Preencha nome da barbearia, nome completo, email e senha.' });
     }
 
-    const existingUser = await getUserByEmail(email);
+    const existingUser = await getUserByEmail(access);
     if (existingUser) {
       return res.status(400).json({ message: 'Email já cadastrado.' });
     }
 
     const passwordHash = hashPassword(password);
     const tenant = await createTenant(tenantName);
-    const user = await createUser(tenant.id, name, email, passwordHash, 'user');
+    const user = await createUser(tenant.id, name, access, passwordHash, 'user');
 
     const token = createToken(user.id);
     sendToken(res, token);
@@ -86,11 +88,12 @@ async function register(req, res, next) {
 async function login(req, res, next) {
   try {
     const { email, password } = req.body;
-    if (!email || !password) {
+    const access = normalizeAccess(email);
+    if (!access || !password) {
       return res.status(400).json({ message: 'Email e senha são obrigatórios.' });
     }
 
-    const user = await getUserByEmailOrName(email);
+    const user = await getUserByEmailOrName(access);
     if (!user) {
       return res.status(401).json({ message: 'Credenciais inválidas.' });
     }

@@ -7,6 +7,7 @@ const {
   deleteAppointment,
   finishAppointment,
   listServiceHistory,
+  deleteServiceHistory,
 } = require('../controllers/appointmentController');
 
 const router = express.Router();
@@ -14,6 +15,7 @@ router.use(authMiddleware, requireRole('user'));
 
 router.get('/', listAppointments);
 router.get('/history', listServiceHistory);
+router.delete('/history/:id', deleteServiceHistory);
 router.post('/', createAppointment);
 router.post('/:id/finish', finishAppointment);
 router.put('/:id', updateAppointment);
